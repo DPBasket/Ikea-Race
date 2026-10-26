@@ -2,7 +2,7 @@
  * Used by the server (require) and by the browser (window.IKEA_TRACKS). */
 (function (root) {
   'use strict';
-  const WORLD = { w: 2400, h: 1500 };
+  const WORLD = { w: 3200, h: 2000 };
 
   // Power-ups: weight = spawn probability in % (sum = 100, gold = 5%)
   const ITEMS = {
@@ -33,13 +33,13 @@
    * width: road width in world units (wide, Mario-Kart style). Edges are solid walls (shelves, partitions).
    * zones: fraction ranges of the lap; wall = style of the walls/furniture in 3D; deco = furniture set.
    * rows: where the item-box rows sit (fraction of the lap). */
-  const SCALE = 1.5;
+  const SCALE = 2;
   const DEFS = [
     {
       id: 'showroom', name: 'SHOWROOM', desc: 'Tra soggiorni, cucine e camere · curve strette',
-      width: 118, radius: 60, grip: 9, speed: 1, finish: 'START', signature: 'shelf',
+      width: 148, radius: 60, grip: 9, speed: 1, finish: 'START', signature: 'shelf',
       events: ['shelf', 'blackout', 'cart', 'cleaning'],
-      rows: [.12, .37, .62, .86],
+      rows: [.1, .3, .5, .68, .86],
       pts: [[150,700],[150,480],[260,370],[400,420],[420,600],[560,700],[700,600],[680,350],[560,210],
             [700,100],[900,150],[1000,320],[900,480],[1050,620],[1250,560],[1300,350],[1200,190],[1400,110],
             [1510,300],[1480,600],[1400,860],[1100,910],[700,880],[400,920],[150,890]],
@@ -52,11 +52,11 @@
     },
     {
       id: 'magazzino', name: 'MAGAZZINO SELF-SERVICE', desc: 'Corsie del magazzino · rettilinei veloci',
-      width: 130, radius: 90, grip: 9, speed: 1, finish: 'START', signature: 'forklift',
+      width: 162, radius: 90, grip: 9, speed: 1, finish: 'START', signature: 'forklift',
       events: ['forklift', 'cart', 'shelf', 'cleaning'],
-      rows: [.1, .3, .55, .8],
-      pts: [[150,600],[150,150],[1450,150],[1450,450],[1100,450,84],[560,450,84],[420,550],[560,650,84],
-            [1000,650,84],[1450,650],[1450,860],[150,860]],
+      rows: [.08, .27, .45, .63, .82],
+      pts: [[150,600],[150,150],[1450,150],[1450,450],[1100,450,105],[560,450,105],[420,550],[560,650,105],
+            [1000,650,105],[1450,650],[1450,860],[150,860]],
       zones: [
         { a: 0,   b: .3,  name: 'CORSIA 07',      tint: '#E2DCCF', wall: 'rack', color: '#0058A3', deco: ['pallet', 'box'] },
         { a: .3,  b: .5,  name: 'SCAFFALI ALTI',  tint: '#E6DDC8', wall: 'rack', color: '#F28C00', deco: ['pallet', 'cart'] },
@@ -65,11 +65,11 @@
       ]
     },
     {
-      id: 'ristorante', name: 'RISTORANTE', desc: 'Pavimento scivoloso · slalom tra i tavoli',
-      width: 120, radius: 80, grip: 2.8, speed: 0.78, finish: 'START', signature: 'icecream',
+      id: 'ristorante', name: 'RISTORANTE', laps: 3, desc: 'Pavimento scivoloso · slalom tra i tavoli',
+      width: 150, radius: 80, grip: 2.8, speed: 0.78, finish: 'START', signature: 'icecream',
       events: ['icecream', 'cleaning', 'cart', 'blackout'],
-      rows: [.08, .33, .58, .84],
-      pts: [[200,600],[200,250],[450,140],[740,250,200],[1160,250,200],[1420,360,165],[1420,740,165],
+      rows: [.08, .28, .48, .66, .86],
+      pts: [[200,600],[200,250],[450,140],[740,250,250],[1160,250,250],[1420,360,206],[1420,740,206],
             [1150,860],[820,740],[500,860],[200,820]],
       obstacles: [
         { x: 820, y: 226, r: 22, kind: 'table' }, { x: 900, y: 274, r: 22, kind: 'table' },
@@ -84,22 +84,21 @@
       ]
     },
     {
-      id: 'smaland', name: 'SMÅLAND', desc: 'Area bimbi · rampe, boost, ostacoli morbidi',
-      width: 118, radius: 65, grip: 7, speed: 0.85, finish: 'START', signature: 'cart',
+      id: 'smaland', name: 'SMÅLAND', laps: 3, desc: 'Area bimbi · rampe, boost, ostacoli morbidi',
+      width: 148, radius: 65, grip: 7, speed: 0.85, finish: 'START', signature: 'cart',
       events: ['cart', 'icecream', 'blackout', 'shelf'],
-      rows: [.13, .4, .6, .88],
+      rows: [.12, .3, .52, .7, .88],
       pts: [[150,560],[150,350],[320,180],[600,150],[720,400],[900,170],[1200,150],[1450,330],[1300,540],
             [1450,790],[1120,880],[900,660],[700,880],[400,860],[150,760]],
       pads: [
-        { at: .06, off: 0, r: 24, type: 'boost' }, { at: .318, off: 0, r: 26, type: 'ramp' },
-        { at: .48, off: -20, r: 24, type: 'boost' }, { at: .806, off: 0, r: 26, type: 'ramp' },
-        { at: .95, off: 18, r: 24, type: 'boost' }
+        { at: .06, off: 0, r: 30, type: 'boost' }, { at: .48, off: -26, r: 30, type: 'boost' },
+        { at: .95, off: 24, r: 30, type: 'boost' }
       ],
       obstacles: [
-        { at: .17, off: 28, r: 15, kind: 'soft' }, { at: .21, off: -30, r: 15, kind: 'soft' },
-        { at: .44, off: 18, r: 15, kind: 'soft' }, { at: .46, off: -32, r: 15, kind: 'soft' },
-        { at: .66, off: 30, r: 15, kind: 'soft' }, { at: .69, off: -18, r: 15, kind: 'soft' },
-        { at: .76, off: -30, r: 15, kind: 'soft' }, { at: .78, off: 22, r: 15, kind: 'soft' }
+        { at: .17, off: 38, r: 18, kind: 'soft' }, { at: .21, off: -40, r: 18, kind: 'soft' },
+        { at: .44, off: 24, r: 18, kind: 'soft' }, { at: .46, off: -43, r: 18, kind: 'soft' },
+        { at: .66, off: 40, r: 18, kind: 'soft' }, { at: .69, off: -24, r: 18, kind: 'soft' },
+        { at: .76, off: -40, r: 18, kind: 'soft' }, { at: .78, off: 30, r: 18, kind: 'soft' }
       ],
       zones: [
         { a: 0,   b: .25, name: 'PISCINA PALLINE', tint: '#F8DDD5', wall: 'soft', color: '#E4002B', deco: ['balls', 'toy'] },
@@ -110,12 +109,12 @@
     },
     {
       id: 'casse', name: 'CASSE', desc: 'Mercato e casse · bivio corto-stretto o lungo-largo',
-      width: 116, radius: 70, grip: 8, speed: 0.8, finish: 'TACK!', signature: 'blackout',
+      width: 145, radius: 70, grip: 8, speed: 0.8, finish: 'TACK!', signature: 'blackout',
       events: ['blackout', 'forklift', 'cleaning', 'icecream', 'cart'],
-      rows: [.12, .35, .5, .85],
-      pts: [[150,620],[150,200],[600,150],[800,380],[1000,150],[1450,200],[1450,520,150],[1450,880,150],
-            [900,880,150],[620,700],[350,880],[150,850]],
-      branch: [[1450,540],[1150,620],[900,860]], branchWidth: 72,
+      rows: [.1, .28, .45, .66, .86],
+      pts: [[150,620],[150,200],[600,150],[800,380],[1000,150],[1450,200],[1450,520,188],[1450,880,188],
+            [900,880,188],[620,700],[350,880],[150,850]],
+      branch: [[1450,540],[1150,620],[900,860]], branchWidth: 90,
       zones: [
         { a: 0,   b: .3,  name: 'MERCATO',      tint: '#D9EBD6', wall: 'room', color: '#FFFFFF', deco: ['plant', 'box', 'table'] },
         { a: .3,  b: .5,  name: 'SELF-SERVICE', tint: '#E6DDC8', wall: 'rack', color: '#0058A3', deco: ['pallet', 'cart'] },
@@ -210,9 +209,33 @@
       const a = br[0], b = br[br.length - 1];
       t.fork = { sF: projectPath(main, a.x, a.y).s, sM: projectPath(main, b.x, b.y).s };
     }
+    t.ramps = findRamps(t);
     t.obstacles = (def.obstacles || []).map(o => place(t, o.at == null ? Object.assign({}, o, { x: o.x * S, y: o.y * S }) : o));
     t.pads = (def.pads || []).map(o => place(t, o));
     return t;
+  }
+
+  // jumps go on the 3 straightest stretches (like Turbo Kartz): low curvature before and after the ramp
+  function findRamps(t) {
+    const L = t.L, step = 40, cand = [];
+    const ang = s => pointAt(t.main, s).ang;
+    for (let s = 300; s < L - 500; s += step) {
+      if (t.fork && s > t.fork.sF - 300 && s < t.fork.sM + 100) continue;
+      if (t.rows.some(f => Math.abs(f * L - s) < 260)) continue;
+      let bend = 0;
+      for (let k = -80; k < 420; k += 40) bend += Math.abs(Math.atan2(Math.sin(ang(s + k + 40) - ang(s + k)), Math.cos(ang(s + k + 40) - ang(s + k))));
+      cand.push({ s, bend });
+    }
+    cand.sort((a, b) => a.bend - b.bend);
+    const out = [];
+    for (const c of cand) {
+      if (out.length >= 3) break;
+      if (c.bend > 0.9) break;
+      if (out.some(o => Math.min(Math.abs(o.s - c.s), L - Math.abs(o.s - c.s)) < L / 5)) continue;
+      const p = pointAt(t.main, c.s);
+      out.push({ s: c.s, x: p.x, y: p.y, ang: p.ang, w: p.w });
+    }
+    return out.sort((a, b) => a.s - b.s);
   }
 
   const list = DEFS.map(build);

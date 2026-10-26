@@ -23,7 +23,8 @@ const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 3443;   // phones need HTTP
 // public address for the QR code: set automatically on Render, or by hand (e.g. a tunnel URL)
 const PUBLIC_URL = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '';
 const HOSTED = !!(PUBLIC_URL || process.env.RENDER);
-const LAPS = 2;
+const LAPS = 2;                   // default; a track can set its own (laps: 3)
+const lapsOf = () => game.track.laps || LAPS;
 const MAX_PLAYERS = 20;
 const COUNTDOWN_MS = 4500;        // 1.5s intro (+ tilt calibration if used) + 3-2-1
 const RACE_TIMEOUT_MS = 240000;   // safety net
@@ -32,7 +33,7 @@ const COLORS = ['#E4002B', '#0058A3', '#FFDB00', '#00A651', '#FF7A00', '#8E44AD'
   '#FFFFFF', '#7CB342', '#1A237E', '#F48FB1', '#00897B', '#B71C1C', '#9E9E9E', '#FFB74D', '#4FC3F7', '#C0CA33'];
 const BOT_NAMES = ['BILLY', 'KALLAX', 'POÄNG', 'LACK', 'MALM', 'EKTORP', 'HEMNES', 'BRIMNES', 'IVAR', 'PAX', 'SÖDERHAMN', 'FRIHETEN', 'LINNMON', 'ALEX', 'BEKANT', 'STUVA', 'TROFAST', 'NORDLI', 'KLIPPAN', 'MARKUS'];
 // identical for every car – only the color changes
-const CAR = { accel: 330, brake: 420, maxSpeed: 290, turn: 2.9, r: 13 };
+const CAR = { accel: 340, brake: 440, maxSpeed: 310, turn: 2.8, r: 14 };
 
 /* =====================================================================
  * QUIZ INTEGRATION HOOKS – replace / override from the quiz app:
@@ -114,7 +115,7 @@ function resetRacer(p) {
     x: 0, y: 0, h: 0, vx: 0, vy: 0, lap: 0, prog: 0, lastS: 0, lapStart: 0, lapTimes: [],
     finished: false, finishTime: null, rank: 0, place: 0, item: null, itemReadyAt: 0, onTrack: true,
     boostUntil: 0, boostMul: 1, boostKind: 0, slowUntil: 0, slowMul: 1, slideUntil: 0, spinDir: 1,
-    stunUntil: 0, inviUntil: 0, ghostUntil: 0, jumpUntil: 0, throwsLeft: 0,
+    stunUntil: 0, inviUntil: 0, ghostUntil: 0, jumpUntil: 0, jumpStart: 0, jumpDur: 0, airborne: false, trick: false, throwsLeft: 0,
     stuckT: 0, botItemAt: 0, botThrowAt: 0, botLane: rnd(-0.3, 0.3), botSkill: rnd(0.86, 1),
     input: { gas: false, steer: 0 }
   });
@@ -130,7 +131,7 @@ const broadcastLobby = () => io.emit('lobby', lobbyPayload());
 
 function raceInfo(ms) {
   return {
-    trackId: game.trackId, ms, laps: LAPS,
+    trackId: game.trackId, ms, laps: lapsOf(),
     players: [...game.players.values()].map(p => ({ id: p.id, name: p.name, color: p.color, bot: p.bot, grid: p.place }))
   };
 }
@@ -299,6 +300,7 @@ function hit(p, kind, now) {
 /* ---------- physics ---------- */
 function physics(p, dt, now, tr) {
   let gas = p.input.gas, steer = p.input.steer;
+  if (!p.bot && Math.abs(steer) < 0.15) steer = assistSteer(p, tr);      // EASY: follows the road when you let go
   const stunned = now < p.stunUntil, sliding = now < p.slideUntil, jumping = now < p.jumpUntil;
   if (stunned) gas = false;
   const speed = Math.hypot(p.vx, p.vy);
@@ -345,6 +347,19 @@ function wallCollide(p, tr) {
     p.vx *= 0.96; p.vy *= 0.96;
     if (vn > 120 && Date.now() - (p.lastBonk || 0) > 300) { p.lastBonk = Date.now(); io.emit('fx', { k: 'wall', x: r1(p.x + nx * CAR.r), y: r1(p.y + ny * CAR.r) }); }
   }
+}
+
+// steering assist: keeps your lane and follows the road ahead, away from the walls
+function assistSteer(p, tr) {
+  const e = TR.nearestEdge(tr, p.x, p.y);
+  if (tr.branch && e !== undefined && TR.projectPath(tr.branch, p.x, p.y).d < TR.projectPath(tr.main, p.x, p.y).d) return 0;
+  const spd = Math.hypot(p.vx, p.vy);
+  const q = TR.pointAt(tr.main, p.lastS), qn = [-Math.sin(q.ang), Math.cos(q.ang)];
+  const lat = clamp((p.x - q.x) * qn[0] + (p.y - q.y) * qn[1], -(q.w / 2 - 40), q.w / 2 - 40);
+  const t = TR.pointAt(tr.main, p.lastS + 90 + spd * 0.3);
+  const tx = t.x - Math.sin(t.ang) * lat, ty = t.y + Math.cos(t.ang) * lat;
+  const err = angNorm(Math.atan2(ty - p.y, tx - p.x) - p.h);
+  return clamp(err * 2, -0.85, 0.85);
 }
 
 function launch(victim, src, now) {
@@ -447,6 +462,13 @@ function spawnEvent(now) {
   }
   if (ev) { ev.id = uid(); game.events.push(ev); }
   io.emit('fx', { k: 'event', ev: type });
+}
+
+function doTrick(p) {
+  const now = Date.now();
+  if (game.phase !== 'race' || !p.airborne || p.trick || now > p.jumpUntil - 150) return;
+  p.trick = true;
+  io.emit('fx', { k: 'trick', id: p.id });
 }
 
 function catchIce(p, ok) {
@@ -552,10 +574,28 @@ function step(now, dt) {
 
   for (const p of active) {
     for (const o of obs) collideCircle(p, o, now);
+    // ramps across the whole road: real airtime, trick in the air = boost on landing
+    if (now >= p.jumpUntil) {
+      if (p.airborne) {
+        p.airborne = false;
+        io.emit('fx', { k: 'land', id: p.id, x: r1(p.x), y: r1(p.y), trick: p.trick });
+        if (p.trick) boost(p, now, 1100, 1.4, 1);
+        p.trick = false;
+      }
+      for (const rp of tr.ramps) {
+        let ds = p.lastS - rp.s; if (ds > L / 2) ds -= L; if (ds < -L / 2) ds += L;
+        if (ds < 0 || ds > 30 || Math.hypot(p.x - rp.x, p.y - rp.y) > rp.w / 2 + 30) continue;
+        const spd = Math.hypot(p.vx, p.vy);
+        p.jumpDur = Math.round(clamp(700 + spd * 2.6, 1000, 1600));
+        p.jumpStart = now; p.jumpUntil = now + p.jumpDur; p.airborne = true; p.trick = false;
+        io.emit('fx', { k: 'jump', id: p.id });
+        if (p.bot && Math.random() < 0.5) setTimeout(() => doTrick(p), rnd(150, 500));
+        break;
+      }
+    }
     // pads (Småland)
     for (const pad of tr.pads) {
       if (Math.hypot(p.x - pad.x, p.y - pad.y) > pad.r + 6) continue;
-      if (pad.type === 'ramp' && now > p.jumpUntil + 300) { p.jumpUntil = now + 650; io.emit('fx', { k: 'jump', id: p.id }); }
       boost(p, now, 900, 1.35, 1);
     }
     // item boxes
@@ -587,7 +627,7 @@ function step(now, dt) {
       const lt = now - p.lapStart;
       p.lapTimes.push(lt); p.lapStart = now; p.lap++;
       io.emit('lap_completed', { playerId: p.id, lap: p.lap, time: lt });
-      if (p.lap >= LAPS) { finishPlayer(p, now); if (game.phase !== 'race') return; }
+      if (p.lap >= lapsOf()) { finishPlayer(p, now); if (game.phase !== 'race') return; }
     }
   }
   game.traps = game.traps.filter(t => !t.dead);
@@ -642,6 +682,7 @@ function flags(p, now) {
   if (now < p.jumpUntil) f |= 64;
   if (!p.onTrack) f |= 128;
   if (now < p.stunUntil) f |= 256;
+  if (p.trick) f |= 1024;
   return f;
 }
 function snapshot(now) {
@@ -651,7 +692,7 @@ function snapshot(now) {
     o: game.order,
     p: [...game.players.values()].map(p => ({
       i: p.id, x: r1(p.x), y: r1(p.y), h: r2(p.h), l: p.lap, it: p.item, f: flags(p, now),
-      fin: p.finished ? 1 : 0, rk: p.rank, ft: p.finishTime, sp: Math.round(Math.hypot(p.vx, p.vy)), th: p.throwsLeft
+      fin: p.finished ? 1 : 0, rk: p.rank, j: now < p.jumpUntil ? [now - p.jumpStart, p.jumpDur] : 0, ft: p.finishTime, sp: Math.round(Math.hypot(p.vx, p.vy)), th: p.throwsLeft
     })),
     b: game.boxes.filter(b => b.active).map(b => [Math.round(b.x), Math.round(b.y)]),
     q: game.projectiles.map(q => [Math.round(q.x), Math.round(q.y), q.type, r2(q.h || 0)]),
@@ -739,6 +780,7 @@ io.on('connection', (s) => {
     p.input.steer = clamp(Number(d.steer) || 0, -1, 1);
   });
   s.on('powerup_used', () => { const p = me(); if (p) useItem(p, Date.now()); });
+  s.on('trick', () => { const p = me(); if (p) doTrick(p); });
   s.on('catch', (d = {}) => { const p = me(); if (p) catchIce(p, !!d.ok); });
   s.on('sabotage_throw', (d = {}) => { const p = me(); if (p) throwItem(p, d.type, d.x, d.y, Date.now()); });
 

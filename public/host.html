@@ -148,7 +148,7 @@ function renderTracks() {
     const b = document.createElement('button'); b.className = 'tcard' + (t.id === selTrack ? ' sel' : '');
     const c = document.createElement('canvas'); c.width = 240; c.height = 150;
     c.getContext('2d').drawImage(R.trackCanvas(t, 0.3), 0, 0, 240, 150);
-    const d = document.createElement('div'); d.innerHTML = `<b>${t.name}</b><span>${t.desc}</span>`;
+    const d = document.createElement('div'); d.innerHTML = `<b>${t.name}</b><span>${t.desc} · ${t.laps || 2} giri</span>`;
     b.append(c, d);
     b.onclick = () => { selTrack = t.id; socket.emit('select_track', { trackId: t.id }); renderTracks(); };
     box.append(b);
@@ -216,6 +216,7 @@ socket.on('fx', f => {
   switch (f.k) {
     case 'flag': flashUntil = performance.now() + 2000; setBanner(`${carName(f.id)}: BANDIERA SVEDESE! TUTTI RALLENTANO`, 2000, '#006AA7'); break;
     case 'catch': pushTicker(`${carName(f.id)} ha preso il gelato!`); break;
+    case 'trick': pushTicker(`${carName(f.id)} · TRICK!`, '#FF7A00'); break;
     case 'event': setBanner('⚠ ' + (TR.EVENTS[f.ev] || f.ev), 1800, R.C.ink); break;
     case 'finish':
       pushTicker(`${carName(f.id)} · ARRIVATO ${f.rank}° · ${R.fmtTime(f.time)}`, race && race.cars[f.id] ? race.cars[f.id].color : null);

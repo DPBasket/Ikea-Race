@@ -67,11 +67,14 @@ Puoi anche guidare dal PC: apri `http://localhost:3000/player.html` in un'altra 
 1. Host apre la pagina → codice + QR
 2. I giocatori scansionano il QR, scrivono il nome, scelgono il colore (il tap su "Entra" chiede anche il permesso del giroscopio su iOS)
 3. Host sceglie la pista e preme **START** (servono almeno 2 piloti)
-4. 2 s "tieni il telefono piatto" (calibrazione) → 3‑2‑1 → 2 giri, ~90 s
+4. Intro con il nome della pista → 3‑2‑1 → gara di circa 1:30–2:00 (2 giri, 3 su Ristorante e Småland)
 5. **Fine gara:** appena taglia il traguardo il **penultimo** pilota. L'ultimo non deve finire ed è ultimo. Con 2 giocatori finisce al primo arrivo.
 6. Schermata risultati con ordine d'arrivo, tempi per giro e totale + podio animato sugli scaffali → **CONTINUA** torna al flusso del quiz
 
 **Controlli telefono (orizzontale):** il kart **accelera da solo** · sterzo con i tasti **◀ ▶** in basso a sinistra (si può far scorrere il pollice) · **OGGETTO** in basso a destra (dopo la roulette di ~1 s) · **FRENO** accanto. In sala d'attesa si può passare allo sterzo a **inclinazione**.
+
+**Guida facile:** se lasci i tasti il kart segue da solo la strada (sterzo assistito), quindi si sterza solo per sorpassare, prendere le scatole "?" o schivare.
+**Salti:** su ogni pista ci sono 3 rampe a tutta larghezza, messe in automatico sui rettilinei più dritti. In volo tocca lo schermo per un **TRICK** (giro di 360°): all'atterraggio prendi un boost.
 
 I bordi della strada sono muri (pareti dello showroom, scaffali del magazzino, ringhiere del ristorante, cuscinoni di Småland, casse): non si esce di pista, si striscia contro. Le file di scatole "?" sono sparse lungo il giro come in Mario Kart; chi è indietro trova oggetti migliori.
 
@@ -139,6 +142,7 @@ race.start();
 - Probabilità dei power-up: `weight` in `ITEMS` (somma 100, köttbullar d'oro 5%)
 - Frequenza eventi: `spawnEvent` / `nextEventAt` in `server.js`
 
-Con i bot il giro dura ~32‑37 s; un umano tipicamente ~40‑50 s, quindi la gara sta sui ~90 s.
+Le piste sono lunghe 7–11 km "di negozio" (unità di gioco): con i bot la gara dura ~70–100 s, con persone vere circa 1:30–2:00.
+Non c'è musica né audio: l'atmosfera è tutta visiva (showroom con stanze arredate, corsie del magazzino, ristorante, Småland, casse).
 
 > Progetto amatoriale/privato a tema: "IKEA" e i nomi dei prodotti sono marchi di Inter IKEA Systems B.V.

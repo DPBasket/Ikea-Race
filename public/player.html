@@ -44,20 +44,20 @@
   #race { background:#E9E6DF; }
   #cv3, #hud { position:absolute; inset:0; width:100%; height:100%; display:block; }
   #hud { pointer-events:none; }
-  #steer { position:absolute; left:calc(12px + env(safe-area-inset-left)); bottom:12px; width:min(46vw, 400px); height:min(36vh, 150px);
-    display:flex; border:4px solid var(--ink); background:rgba(255,255,255,.55); border-radius:22px; overflow:hidden; touch-action:none; }
-  #steer span { flex:1; display:flex; align-items:center; justify-content:center; font-size:min(12vh,52px); color:var(--blue); font-weight:900; }
+  #steer { position:absolute; left:calc(10px + env(safe-area-inset-left)); bottom:10px; width:min(32vw, 270px); height:min(21vh, 84px);
+    display:flex; border:3px solid rgba(17,17,17,.75); background:rgba(255,255,255,.3); border-radius:18px; overflow:hidden; touch-action:none; }
+  #steer span { flex:1; display:flex; align-items:center; justify-content:center; font-size:min(9vh,36px); color:var(--blue); font-weight:900; }
   #steer span + span { border-left:3px solid rgba(0,0,0,.25); }
   #steer span.on { background:var(--yellow); }
   body.tilt #steer { display:none; }
-  #pu { position:absolute; right:calc(14px + env(safe-area-inset-right)); bottom:12px; width:min(38vh,30vw); height:min(38vh,30vw); border-radius:50%;
-    background:#BDBDBD; border:4px solid #9E9E9E; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    font-weight:900; font-size:min(3.2vh,13px); letter-spacing:.05em; opacity:.6; touch-action:none; }
+  #pu { position:absolute; right:calc(10px + env(safe-area-inset-right)); bottom:10px; width:min(25vh,19vw); height:min(25vh,19vw); border-radius:50%;
+    background:rgba(189,189,189,.5); border:3px solid rgba(158,158,158,.8); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-weight:900; font-size:min(2.6vh,10px); letter-spacing:.04em; opacity:.6; touch-action:none; }
   #pu.ready { background:var(--blue); border-color:var(--ink); opacity:1; animation:pulse .8s infinite alternate; }
   #pu canvas { width:58%; height:58%; }
   @keyframes pulse { from { box-shadow:0 0 0 0 rgba(255,219,0,.9); } to { box-shadow:0 0 0 14px rgba(255,219,0,0); } }
-  #brake { position:absolute; right:calc(min(38vh,30vw) + 26px + env(safe-area-inset-right)); bottom:12px; width:min(20vh,15vw); height:min(20vh,15vw);
-    border-radius:16px; background:#fff; border:3px solid var(--ink); font-weight:900; font-size:min(3vh,13px); touch-action:none; }
+  #brake { position:absolute; right:calc(min(25vh,19vw) + 18px + env(safe-area-inset-right)); bottom:10px; width:min(15vh,11vw); height:min(15vh,11vw);
+    border-radius:12px; background:rgba(255,255,255,.55); border:2px solid rgba(17,17,17,.7); font-weight:900; font-size:min(2.4vh,10px); touch-action:none; }
   #brake.on { background:var(--red); color:#fff; }
   #catch { position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); width:min(44vh,34vw); height:min(44vh,34vw); border-radius:50%;
     background:#FFF3E0; color:var(--red); font-weight:900; font-size:min(7vh,32px); border:4px solid var(--red); display:none; align-items:center; justify-content:center; }
@@ -100,7 +100,7 @@
   </div>
   <div class="card">
     <label>COMANDI</label>
-    <div class="muted">Il kart accelera da solo. Sterza con i tasti ◀ ▶ (pollice sinistro), usa l'oggetto col pulsante blu (pollice destro). FRENO se serve.</div>
+    <div class="muted">Il kart accelera da solo e, se lasci i tasti, segue la strada. Sterza con ◀ ▶ (pollice sinistro), oggetto col pulsante rotondo (pollice destro). Sulle rampe tocca lo schermo in volo per un TRICK: boost all'atterraggio!</div>
     <div class="row">
       <button class="btn ghost sel" id="modeBtn">STERZO A TASTI</button>
       <button class="btn ghost" id="modeTilt">INCLINAZIONE</button>
@@ -274,15 +274,22 @@ function padUpdate() {
   $('sl').classList.toggle('on', padSteer < 0); $('sr').classList.toggle('on', padSteer > 0);
   sendInput();
 }
-pad.addEventListener('pointerdown', e => { e.preventDefault(); try { pad.setPointerCapture(e.pointerId); } catch (_) {} touches.set(e.pointerId, e.clientX); padUpdate(); });
+pad.addEventListener('pointerdown', e => { e.preventDefault(); tryTrick(); try { pad.setPointerCapture(e.pointerId); } catch (_) {} touches.set(e.pointerId, e.clientX); padUpdate(); });
 pad.addEventListener('pointermove', e => { if (touches.has(e.pointerId)) { touches.set(e.pointerId, e.clientX); padUpdate(); } });
 for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(ev, e => { touches.delete(e.pointerId); padUpdate(); });
 const brake = $('brake');
-brake.addEventListener('pointerdown', e => { e.preventDefault(); braking = true; brake.classList.add('on'); sendInput(); });
+brake.addEventListener('pointerdown', e => { e.preventDefault(); tryTrick(); braking = true; brake.classList.add('on'); sendInput(); });
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) brake.addEventListener(ev, () => { braking = false; brake.classList.remove('on'); sendInput(); });
-$('pu').addEventListener('pointerdown', e => { e.preventDefault(); usePowerup(); });
+$('pu').addEventListener('pointerdown', e => { e.preventDefault(); if (!tryTrick()) usePowerup(); });
 $('catch').addEventListener('pointerdown', e => { e.preventDefault(); tryCatch(); });
 for (const el of document.querySelectorAll('#race button, #steer')) el.addEventListener('contextmenu', e => e.preventDefault());
+// in the air (after a ramp): any tap = trick → boost on landing
+function tryTrick() {
+  const m = myState();
+  if (!m || !m.j || (m.f & 1024) || sab) return false;
+  socket.emit('trick'); if (navigator.vibrate) navigator.vibrate(15);
+  return true;
+}
 function usePowerup() {
   const m = myState();
   if (!m || !m.it || roulette) return;
@@ -290,7 +297,7 @@ function usePowerup() {
 }
 
 const keys = {};
-addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' ') usePowerup(); if (e.key === 'c' || e.key === 'C') tryCatch(); updateKeys(); });
+addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' ' && !tryTrick()) usePowerup(); if (e.key === 'c' || e.key === 'C') tryCatch(); updateKeys(); });
 addEventListener('keyup', e => { keys[e.key] = false; updateKeys(); });
 function updateKeys() {
   keySteer = (keys.ArrowLeft || keys.a ? -1 : 0) + (keys.ArrowRight || keys.d ? 1 : 0);
@@ -375,6 +382,8 @@ socket.on('fx', f => {
   if (view) view.fx(f);
   if (f.k === 'hit' && f.id === me.id && navigator.vibrate) navigator.vibrate(120);
   if (f.k === 'flag') flashUntil = performance.now() + 2000;
+  if (f.k === 'trick' && f.id === me.id) flashMsg('TRICK!', 700);
+  if (f.k === 'land' && f.id === me.id && f.trick) flashMsg('BOOST!', 700);
   if (f.k === 'event' && f.ev !== 'icecream') flashMsg(TR.EVENTS[f.ev] || '', 1300);
 });
 socket.on('sabotage_start', d => {
@@ -404,6 +413,7 @@ function updateSab() {
   document.querySelectorAll('#sab .opt').forEach(b => b.classList.toggle('sel', b.dataset.t === sab.type));
 }
 $('cv3').addEventListener('pointerdown', e => {
+  if (!sab) { tryTrick(); return; }
   if (!sab || sab.left <= 0 || !view) return;
   const w = view.pick(e.clientX, e.clientY);
   if (!w) return;
@@ -474,7 +484,9 @@ function drawHud(now, cw, ch, mine) {
     ctx.fillStyle = C.ink; ctx.font = '900 18px Verdana, sans-serif';
     ctx.fillText(`GIRO ${Math.min(race.laps, mine.l + 1)}/${race.laps}  ${R.fmtTime(Math.max(0, state.t))}`, 26, 33);
     // minimap
-    drawMinimap(cw - 150, 110, 136, now);
+    drawMinimap(cw - 132, 104, 120, now);
+    if (mine.j && !(mine.f & 1024)) { ctx.textAlign = 'center'; ctx.font = '900 26px Verdana, sans-serif'; ctx.lineWidth = 6; ctx.strokeStyle = '#fff';
+      ctx.strokeText('TOCCA! TRICK', cw / 2, ch * 0.22); ctx.fillStyle = '#FF7A00'; ctx.fillText('TOCCA! TRICK', cw / 2, ch * 0.22); }
     if (mine.f & 4) { ctx.textAlign = 'center'; ctx.fillStyle = '#006AA7'; ctx.font = '900 18px Verdana, sans-serif'; ctx.fillText('RALLENTATO!', cw / 2, 70); }
     if (mine.f & 16) { ctx.textAlign = 'center'; ctx.fillStyle = C.red; ctx.font = '900 18px Verdana, sans-serif'; ctx.fillText('HOT DOG: INVINCIBILE', cw / 2, 70); }
   } else {
@@ -496,7 +508,7 @@ function drawMinimap(x, y, w, now) {
   ctx.save(); ctx.globalAlpha = 0.85;
   ctx.fillStyle = 'rgba(255,255,255,.7)'; R.rr(ctx, x - 6, y - 6, w + 12, h + 12, 8); ctx.fill();
   ctx.translate(x, y); ctx.scale(s, s);
-  ctx.strokeStyle = '#9E9E9E'; ctx.lineWidth = 60; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#9E9E9E'; ctx.lineWidth = 80; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   for (const p of [t.main, t.branch].filter(Boolean)) {
     ctx.beginPath(); p.pts.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); if (p.closed) ctx.closePath(); ctx.stroke();
   }
@@ -506,7 +518,7 @@ function drawMinimap(x, y, w, now) {
     const car = race.cars[p.i]; if (!car) continue;
     const isMe = p.i === me.id;
     ctx.fillStyle = car.color; ctx.strokeStyle = isMe ? '#111' : '#fff'; ctx.lineWidth = isMe ? 18 : 10;
-    ctx.beginPath(); ctx.arc(disp[p.i].x, disp[p.i].y, isMe ? 60 : 40, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(disp[p.i].x, disp[p.i].y, isMe ? 80 : 55, 0, 7); ctx.fill(); ctx.stroke();
   }
   ctx.restore();
 }

@@ -759,7 +759,14 @@
       const kind = pick(zone.deco, k);
       if (zone.wall === 'rack' && c < 95) continue;                 // racks already there
       const face = Math.atan2(pr.py - jz, pr.px - jx) - Math.PI / 2;     // furniture faces the road
-      FURN[kind](L(B, jx, jz, face), k);
+      const o = L(B, jx, jz, face);
+      if (zone.wall === 'room' && k % 2 === 0 && c > 90) {               // showroom "room" with back walls, like the real store
+        o.b(0, -58, 0, 150, 64, 6, zone.color === '#FFFFFF' ? '#EDEAE4' : zone.color);
+        o.b(-75, -22, 0, 6, 64, 78, '#E6E2DA');
+        o.b(0, -58, 64, 152, 4, 8, '#0058A3');
+      }
+      FURN[kind](o, k);
+      if (k % 3 === 0) { o.c(34, 30, 0, 1, 20, '#333333'); o.b(34, 30, 20, 18, 11, 2, '#FFDB00'); }     // yellow price tag
     }
     // obstacles + pads
     t.obstacles.forEach((o, i) => {
@@ -774,6 +781,13 @@
         o.b(0, 0, 0.8, p.r * 2, 1, p.r * 2, '#FFDB00');
         for (const dx of [-8, 6]) { o.b(dx, -7, 1.6, 4, 1, 16, '#0058A3'); }
       }
+    });
+    // jump ramps: full-width wedges with yellow/blue stripes
+    t.ramps.forEach(rp => {
+      const o = L(B, rp.x, rp.y, rp.ang), w = rp.w - 6;
+      for (let k = 0; k < 8; k++) o.b(-36 + k * 5, 0, 0, 5.5, 2 + k * 2.2, w, k % 2 ? '#FFDB00' : '#0058A3');
+      o.b(4, 0, 0, 6, 19, w, '#222222');
+      for (const sd of [-1, 1]) o.b(-14, sd * (w / 2 + 4), 0, 44, 22, 4, '#E4002B');
     });
     B.build(group);
     // start / finish line + arch
@@ -978,6 +992,7 @@
         case 'wall': s.emit(f.x, 8, f.y, { n: 8, colors: ['#FFDB00', '#FFFFFF'], speed: 90, up: 60, life: 0.35 }); break;
         case 'poof': case 'bonk': case 'clean': s.emit(f.x, 10, f.y, { n: 10, color: '#FFFFFF', speed: 80, life: 0.4 }); break;
         case 'flag': v.flashUntil = performance.now() + 2000; break;
+        case 'land': s.emit(f.x, 4, f.y, { n: f.trick ? 30 : 14, colors: f.trick ? ['#FFDB00', '#FF7A00', '#FFFFFF'] : ['#FFFFFF', '#CFCFCF'], speed: f.trick ? 180 : 110, up: 60, life: 0.5 }); break;
       }
     };
 
@@ -992,13 +1007,23 @@
         const ghost = p.f & 32, isMe = o.me === p.i, show = !p.fin && (!ghost || isMe || o.host);
         k.root.visible = k.shadow.visible = show;
         if (!show) continue;
-        const jump = p.f & 64 ? 14 + Math.sin(now / 90) * 2 : 0;
+        // jump arc from the server's airtime (smoothed on the local clock)
+        let jump = 0, jf = 0;
+        if (p.j) {
+          if (d.jS == null || Math.abs((now - d.jS) - p.j[0]) > 250) d.jS = now - p.j[0];
+          d.jD = p.j[1];
+          jf = Math.min(1, (now - d.jS) / d.jD);
+          jump = 4 * (30 + 0.035 * d.jD) * jf * (1 - jf);
+        } else d.jS = null;
+        d.jy = jump;
         k.root.position.set(d.x, jump, d.y); k.root.rotation.y = -d.h;
-        const big = v.mode === 'overview' ? 1.7 : 1;                    // easier to see on the projector
+        const big = v.mode === 'overview' ? 2.4 : 1;                    // easier to see on the projector
         k.kart.scale.setScalar(big); k.label.scale.set(64 * big * 1.3, 16 * big * 1.3, 1); k.label.position.y = 46 * big;
-        k.kart.rotation.z = 0; k.kart.rotation.x = (p.f & 8) ? Math.sin(now / 60) * 0.25 : 0;
-        if (p.f & 8) k.kart.rotation.y += dt * 12; else k.kart.rotation.y *= 0.8;          // spin-out
-        k.shadow.position.set(d.x, 0.9, d.y);
+        k.kart.rotation.z = jump ? (0.5 - jf) * 0.45 : 0;                               // nose up, then down
+        k.kart.rotation.x = (p.f & 8) ? Math.sin(now / 60) * 0.25 : 0;
+        if ((p.f & 1024) && jump) k.kart.rotation.y = jf * Math.PI * 2;                   // trick: 360° spin
+        else if (p.f & 8) k.kart.rotation.y += dt * 12; else k.kart.rotation.y *= 0.8;     // spin-out
+        k.shadow.position.set(d.x, 0.9, d.y); k.shadow.scale.setScalar(Math.max(0.4, 1 - jump / 140) * (v.mode === 'overview' ? 2.4 : 1));
         k.label.visible = !!o.names && !isMe;
         const alpha = ghost ? (isMe ? 0.45 : 0.25) : 1;
         const invi = p.f & 16, flash = invi && Math.floor(now / 90) % 2;
@@ -1066,13 +1091,14 @@
     let cx = d.x - Math.cos(v.camH) * dist, cz = d.y - Math.sin(v.camH) * dist;
     // keep the camera above the road so walls never block the view
     for (let i = 0; i < 6 && TR.clearance(v.track, cx, cz) > -6; i++) { cx = (cx + d.x) / 2; cz = (cz + d.y) / 2; }
-    v.camPos.set(cx, hgt, cz);
+    const jy = (d.jy || 0) * 0.7;
+    v.camPos.set(cx, hgt + jy, cz);
     cam.position.lerp(v.camPos, 1 - Math.exp(-dt * 10));
     // clamp the smoothed position too, so it never cuts a corner through the shelves
     for (let i = 0; i < 6 && TR.clearance(v.track, cam.position.x, cam.position.z) > -6; i++) {
       cam.position.x = (cam.position.x + d.x) / 2; cam.position.z = (cam.position.z + d.y) / 2;
     }
-    cam.lookAt(d.x + Math.cos(v.camH) * 110, 8, d.y + Math.sin(v.camH) * 110);
+    cam.lookAt(d.x + Math.cos(v.camH) * 110, 8 + jy, d.y + Math.sin(v.camH) * 110);
     const fov = boost ? 82 : 70;
     v.fov += (fov - v.fov) * Math.min(1, dt * 4);
     if (Math.abs(cam.fov - v.fov) > 0.05) { cam.fov = v.fov; cam.updateProjectionMatrix(); }
@@ -1082,7 +1108,7 @@
     const a = cam.aspect, fov = 40, tilt = 0.95;                 // radians from horizontal
     if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
     const vf = Math.tan(fov * Math.PI / 360);
-    const dist = Math.max((W * 0.53) / (vf * a), (H * 0.62) / vf);
+    const dist = Math.max((W * 0.57) / (vf * a), (H * 0.64) / vf);
     cam.position.set(W / 2, Math.sin(tilt) * dist, H / 2 + Math.cos(tilt) * dist);
     cam.lookAt(W / 2, 0, H / 2 + 30);
   }
