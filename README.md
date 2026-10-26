@@ -71,9 +71,10 @@ Puoi anche guidare dal PC: apri `http://localhost:3000/player.html` in un'altra 
 5. **Fine gara:** appena taglia il traguardo il **penultimo** pilota. L'ultimo non deve finire ed è ultimo. Con 2 giocatori finisce al primo arrivo.
 6. Schermata risultati con ordine d'arrivo, tempi per giro e totale + podio animato sugli scaffali → **CONTINUA** torna al flusso del quiz
 
-**Controlli telefono (orizzontale):** il kart **accelera da solo** · sterzo con i tasti **◀ ▶** in basso a sinistra (si può far scorrere il pollice) · **OGGETTO** in basso a destra (dopo la roulette di ~1 s) · **FRENO** accanto. In sala d'attesa si può passare allo sterzo a **inclinazione**.
+**Controlli telefono (meglio in orizzontale, funziona anche in verticale):** tieni premuto **GAS** in basso a destra (lasciarlo = frenare) · sterzo con **◀ ▶** in basso a sinistra (si può far scorrere il pollice) · **OGGETTO** accanto al GAS (dopo la roulette di ~1 s). In sala d'attesa si può passare allo sterzo a **inclinazione**.
 
-**Guida facile:** se lasci i tasti il kart segue da solo la strada (sterzo assistito), quindi si sterza solo per sorpassare, prendere le scatole "?" o schivare.
+**Sterzo assistito (attivabile in sala d'attesa, di default SÌ):** mentre tieni il GAS e non tocchi ◀ ▶, il kart segue la curva da solo; si sterza per sorpassare, prendere le scatole "?" o schivare.
+**Tappeto:** ai lati della strada c'è qualche metro di tappeto dove si può andare ma si è più lenti; oltre ci sono i muri.
 **Salti:** su ogni pista ci sono 3 rampe a tutta larghezza, messe in automatico sui rettilinei più dritti. In volo tocca lo schermo per un **TRICK** (giro di 360°): all'atterraggio prendi un boost.
 
 I bordi della strada sono muri (pareti dello showroom, scaffali del magazzino, ringhiere del ristorante, cuscinoni di Småland, casse): non si esce di pista, si striscia contro. Le file di scatole "?" sono sparse lungo il giro come in Mario Kart; chi è indietro trova oggetti migliori.

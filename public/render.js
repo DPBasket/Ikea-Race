@@ -612,9 +612,11 @@
         const ux = dx / len, uz = dz / len, nx = -uz, nz = ux, rot = -Math.atan2(dz, dx);
         const zone = TR.zoneAt(t, path === t.main ? cum[i] : t.fork.sF);
         for (const side of [1, -1]) {
-          const hw = (a.w + bb.w) / 4 + 5;
+          const sh = (a.sh[side] + bb.sh[side]) / 2;
+          if (sh < 8) continue;                                                     // opening (fork junction)
+          const hw = (a.w + bb.w) / 4 + sh + 5;
           const mx = (a.x + bb.x) / 2 + nx * hw * side, mz = (a.y + bb.y) / 2 + nz * hw * side;
-          if (TR.clearance(t, mx + nx * side * 4, mz + nz * side * 4) < 6) continue;   // junction / inside another road
+          if (TR.clearance(t, mx + nx * side * 4, mz + nz * side * 4) < 2) continue;   // inside another road
           const L2 = len + 3, st = zone.wall;
           if (st === 'room') {
             B.b(mx, mz, 0, L2, 26, 8, rot, zone.color);
@@ -622,7 +624,7 @@
           } else if (st === 'rack') {
             B.b(mx, mz, 0, L2, 8, 8, rot, (i % 2) ? '#FFDB00' : '#222222');          // safety barrier
             const ox = mx + nx * side * 34, oz = mz + nz * side * 34;
-            if (TR.clearance(t, ox, oz) > 20) {
+            if (TR.clearance(t, ox, oz) > 30) {
               B.b(ox, oz, 40, L2, 4, 44, rot, zone.color); B.b(ox, oz, 84, L2, 4, 44, rot, zone.color);
               B.b(ox, oz, 128, L2, 4, 44, rot, zone.color);
               if (rackStep++ % 3 === 0) { B.b(ox, oz, 0, 5, 150, 5, rot, '#0058A3'); }
@@ -663,11 +665,12 @@
         x.strokeStyle = TR.zoneAt(t, cum[i]).tint; x.lineWidth = a.w + 300;
         x.beginPath(); x.moveTo(a.x, a.y); x.lineTo(b.x, b.y); x.stroke();
       }
-      for (const p of [t.main, t.branch].filter(Boolean)) {
+      // carpet shoulder next to the road (slower), then the road
+      for (const [col2, extra] of [['#B9AE98', TR.SHOULDER * 2], ['#E2E2E2', 0]]) for (const p of [t.main, t.branch].filter(Boolean)) {
         const m = p.closed ? p.n : p.n - 1;
         for (let i = 0; i < m; i++) {
           const a = p.pts[i], b = p.pts[(i + 1) % p.n];
-          x.strokeStyle = '#E2E2E2'; x.lineWidth = a.w;
+          x.strokeStyle = col2; x.lineWidth = a.w + extra;
           x.beginPath(); x.moveTo(a.x, a.y); x.lineTo(b.x, b.y); x.stroke();
         }
       }
@@ -683,8 +686,8 @@
       for (let y = 0; y < h; y += 128) { x.fillRect(4, y, 10, 80); x.fillRect(w - 14, y, 10, 80); }
       // IKEA "follow the arrows" floor arrow (points along +v = driving direction)
       x.fillStyle = 'rgba(255,255,255,.9)';
-      x.beginPath(); x.moveTo(w / 2, 470); x.lineTo(w / 2 - 50, 380); x.lineTo(w / 2 - 20, 380); x.lineTo(w / 2 - 20, 300);
-      x.lineTo(w / 2 + 20, 300); x.lineTo(w / 2 + 20, 380); x.lineTo(w / 2 + 50, 380); x.closePath(); x.fill();
+      x.beginPath(); x.moveTo(w / 2, 40); x.lineTo(w / 2 - 50, 130); x.lineTo(w / 2 - 20, 130); x.lineTo(w / 2 - 20, 210);
+      x.lineTo(w / 2 + 20, 210); x.lineTo(w / 2 + 20, 130); x.lineTo(w / 2 + 50, 130); x.closePath(); x.fill();
     }, true);
     return roadTexCache;
   }
@@ -754,13 +757,13 @@
     for (let x = 60; x < W - 40; x += 105) for (let z = 60; z < H - 40; z += 105) {
       const jx = x + ((k * 37) % 30) - 15, jz = z + ((k * 53) % 30) - 15; k++;
       const c = TR.clearance(t, jx, jz);
-      if (c < 62 || c > 520) continue;
+      if (c < TR.SHOULDER + 52 || c > 600) continue;
       const pr = TR.projectPath(t.main, jx, jz), zone = TR.zoneAt(t, pr.s);
       const kind = pick(zone.deco, k);
-      if (zone.wall === 'rack' && c < 95) continue;                 // racks already there
+      if (zone.wall === 'rack' && c < TR.SHOULDER + 100) continue;                 // racks already there
       const face = Math.atan2(pr.py - jz, pr.px - jx) - Math.PI / 2;     // furniture faces the road
       const o = L(B, jx, jz, face);
-      if (zone.wall === 'room' && k % 2 === 0 && c > 90) {               // showroom "room" with back walls, like the real store
+      if (zone.wall === 'room' && k % 2 === 0 && c > TR.SHOULDER + 80) {               // showroom "room" with back walls, like the real store
         o.b(0, -58, 0, 150, 64, 6, zone.color === '#FFFFFF' ? '#EDEAE4' : zone.color);
         o.b(-75, -22, 0, 6, 64, 78, '#E6E2DA');
         o.b(0, -58, 64, 152, 4, 8, '#0058A3');
@@ -798,7 +801,7 @@
     const arch = new T3.Group();
     const postM = new T3.MeshLambertMaterial({ color: '#0058A3' });
     for (const sd of [-1, 1]) { const post = new T3.Mesh(new T3.BoxGeometry(8, 110, 8), postM); post.position.set(0, 55, sd * (a.w / 2 + 10)); arch.add(post); }
-    const banner = signMesh(t.finish, a.w + 28, 30); banner.position.set(0, 100, 0); banner.rotation.y = Math.PI / 2; arch.add(banner);
+    const banner = signMesh(t.finish, a.w + 28, 30); banner.position.set(0, 100, 0); banner.rotation.y = -Math.PI / 2; arch.add(banner);
     arch.position.set(a.x, 0, a.y); arch.rotation.y = -ang; group.add(arch);
     // hanging zone signs over the road
     t.zones.forEach(z => {
@@ -923,6 +926,8 @@
     opts = opts || {};
     const renderer = new T3.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(opts.maxDpr || 1.5, window.devicePixelRatio || 1));
+    canvas.addEventListener('webglcontextlost', e => e.preventDefault());
+    canvas.addEventListener('webglcontextrestored', () => { if (v.track) { v.setTrack(v.track); v.setCars(v.cars); } });
     const scene = new T3.Scene();
     scene.background = col('#E9E6DF');
     scene.add(new T3.HemisphereLight(0xffffff, 0x9a958c, 1.1));
@@ -1083,19 +1088,24 @@
     return v;
   }
 
+  // is this point beyond the walls? (camera must stay on the road or its carpet shoulder)
+  function camOut(t, x, z) {
+    const e = TR.nearestEdge(t, x, z);
+    return e.d > e.hw + Math.max(0, TR.shoulderAt(e) - 22);
+  }
   function chaseCam(v, d, p, dt) {
     const cam = v.camera;
     if (v.camH == null) v.camH = d.h;
     v.camH += Math.atan2(Math.sin(d.h - v.camH), Math.cos(d.h - v.camH)) * Math.min(1, dt * 5);
-    const boost = p && (p.f & 1), dist = 92, hgt = 46;
+    const boost = p && (p.f & 1), tall = cam.aspect < 1, dist = tall ? 150 : 92, hgt = tall ? 78 : 46;   // upright phone: pull back
     let cx = d.x - Math.cos(v.camH) * dist, cz = d.y - Math.sin(v.camH) * dist;
     // keep the camera above the road so walls never block the view
-    for (let i = 0; i < 6 && TR.clearance(v.track, cx, cz) > -6; i++) { cx = (cx + d.x) / 2; cz = (cz + d.y) / 2; }
+    for (let i = 0; i < 6 && camOut(v.track, cx, cz); i++) { cx = (cx + d.x) / 2; cz = (cz + d.y) / 2; }
     const jy = (d.jy || 0) * 0.7;
     v.camPos.set(cx, hgt + jy, cz);
     cam.position.lerp(v.camPos, 1 - Math.exp(-dt * 10));
     // clamp the smoothed position too, so it never cuts a corner through the shelves
-    for (let i = 0; i < 6 && TR.clearance(v.track, cam.position.x, cam.position.z) > -6; i++) {
+    for (let i = 0; i < 6 && camOut(v.track, cam.position.x, cam.position.z); i++) {
       cam.position.x = (cam.position.x + d.x) / 2; cam.position.z = (cam.position.z + d.y) / 2;
     }
     cam.lookAt(d.x + Math.cos(v.camH) * 110, 8 + jy, d.y + Math.sin(v.camH) * 110);

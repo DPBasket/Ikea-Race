@@ -117,7 +117,7 @@ function resetRacer(p) {
     boostUntil: 0, boostMul: 1, boostKind: 0, slowUntil: 0, slowMul: 1, slideUntil: 0, spinDir: 1,
     stunUntil: 0, inviUntil: 0, ghostUntil: 0, jumpUntil: 0, jumpStart: 0, jumpDur: 0, airborne: false, trick: false, throwsLeft: 0,
     stuckT: 0, botItemAt: 0, botThrowAt: 0, botLane: rnd(-0.3, 0.3), botSkill: rnd(0.86, 1),
-    input: { gas: false, steer: 0 }
+    input: { gas: false, steer: 0, assist: true }
   });
 }
 
@@ -300,7 +300,7 @@ function hit(p, kind, now) {
 /* ---------- physics ---------- */
 function physics(p, dt, now, tr) {
   let gas = p.input.gas, steer = p.input.steer;
-  if (!p.bot && Math.abs(steer) < 0.15) steer = assistSteer(p, tr);      // EASY: follows the road when you let go
+  if (!p.bot && p.input.assist && Math.abs(steer) < 0.15 && gas) steer = assistSteer(p, tr);      // EASY: follows the road when you let go
   const stunned = now < p.stunUntil, sliding = now < p.slideUntil, jumping = now < p.jumpUntil;
   if (stunned) gas = false;
   const speed = Math.hypot(p.vx, p.vy);
@@ -313,15 +313,16 @@ function physics(p, dt, now, tr) {
   }
   const fx = Math.cos(p.h), fy = Math.sin(p.h);
   let fwd = p.vx * fx + p.vy * fy, lat = -p.vx * fy + p.vy * fx;
-  p.onTrack = true;
+  p.onTrack = jumping || TR.clearance(tr, p.x, p.y) < 4;
   const boosting = now < p.boostUntil;
   let max = CAR.maxSpeed * (tr.speed || 1);
   if (boosting) max *= p.boostMul;
   if (now < p.slowUntil) max *= p.slowMul;
   if (now < p.inviUntil) max *= 1.15;
+  if (!p.onTrack) max *= 0.55;                      // off the road, on the carpet: slower
   if (gas || boosting) fwd += CAR.accel * (boosting ? 1.8 : 1) * dt;
   else fwd -= Math.sign(fwd) * Math.min(Math.abs(fwd), CAR.brake * dt);   // releasing gas = brake
-  if (fwd > max) fwd -= Math.min(fwd - max, 380 * dt);
+  if (fwd > max) fwd -= Math.min(fwd - max, (p.onTrack ? 380 : 600) * dt);
   if (fwd < -40) fwd = -40;
   const grip = sliding ? 0.6 : jumping ? 0.5 : tr.grip;
   lat *= Math.exp(-grip * dt);
@@ -337,7 +338,7 @@ function physics(p, dt, now, tr) {
 
 // the edges of the road are solid walls (shelves, partitions): slide along them
 function wallCollide(p, tr) {
-  const e = TR.nearestEdge(tr, p.x, p.y), lim = e.hw - CAR.r;
+  const e = TR.nearestEdge(tr, p.x, p.y), lim = e.hw + TR.shoulderAt(e) - CAR.r;
   if (e.d <= lim || e.d < 0.001) return;
   const nx = (p.x - e.px) / e.d, ny = (p.y - e.py) / e.d;
   p.x = e.px + nx * lim; p.y = e.py + ny * lim;
@@ -778,6 +779,7 @@ io.on('connection', (s) => {
     if (!p) return;
     p.input.gas = !!d.gas;
     p.input.steer = clamp(Number(d.steer) || 0, -1, 1);
+    p.input.assist = d.assist !== false;
   });
   s.on('powerup_used', () => { const p = me(); if (p) useItem(p, Date.now()); });
   s.on('trick', () => { const p = me(); if (p) doTrick(p); });

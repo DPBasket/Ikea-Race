@@ -50,15 +50,21 @@
   #steer span + span { border-left:3px solid rgba(0,0,0,.25); }
   #steer span.on { background:var(--yellow); }
   body.tilt #steer { display:none; }
-  #pu { position:absolute; right:calc(10px + env(safe-area-inset-right)); bottom:10px; width:min(25vh,19vw); height:min(25vh,19vw); border-radius:50%;
+  #gas { position:absolute; right:calc(10px + env(safe-area-inset-right)); bottom:10px; width:min(28vh,20vw); height:min(28vh,20vw); border-radius:50%;
+    background:rgba(255,219,0,.75); border:3px solid rgba(17,17,17,.75); color:var(--blue); font-weight:900; font-size:min(5vh,20px); touch-action:none; }
+  #gas.on { background:#FFE94D; transform:scale(.95); }
+  #pu { position:absolute; right:calc(min(28vh,20vw) + 20px + env(safe-area-inset-right)); bottom:10px; width:min(19vh,14vw); height:min(19vh,14vw); border-radius:50%;
     background:rgba(189,189,189,.5); border:3px solid rgba(158,158,158,.8); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    font-weight:900; font-size:min(2.6vh,10px); letter-spacing:.04em; opacity:.6; touch-action:none; }
+    font-weight:900; font-size:min(2.2vh,9px); letter-spacing:.03em; opacity:.6; touch-action:none; }
   #pu.ready { background:var(--blue); border-color:var(--ink); opacity:1; animation:pulse .8s infinite alternate; }
-  #pu canvas { width:58%; height:58%; }
-  @keyframes pulse { from { box-shadow:0 0 0 0 rgba(255,219,0,.9); } to { box-shadow:0 0 0 14px rgba(255,219,0,0); } }
-  #brake { position:absolute; right:calc(min(25vh,19vw) + 18px + env(safe-area-inset-right)); bottom:10px; width:min(15vh,11vw); height:min(15vh,11vw);
-    border-radius:12px; background:rgba(255,255,255,.55); border:2px solid rgba(17,17,17,.7); font-weight:900; font-size:min(2.4vh,10px); touch-action:none; }
-  #brake.on { background:var(--red); color:#fff; }
+  #pu canvas { width:60%; height:60%; }
+  @keyframes pulse { from { box-shadow:0 0 0 0 rgba(255,219,0,.9); } to { box-shadow:0 0 0 12px rgba(255,219,0,0); } }
+  /* phone held upright: same controls, sized for the narrow screen */
+  @media (orientation:portrait) {
+    #steer { width:46vw; height:13vh; }
+    #gas { width:27vw; height:27vw; }
+    #pu { width:19vw; height:19vw; right:calc(27vw + 18px); bottom:calc(10px + 4vw); }
+  }
   #catch { position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); width:min(44vh,34vw); height:min(44vh,34vw); border-radius:50%;
     background:#FFF3E0; color:var(--red); font-weight:900; font-size:min(7vh,32px); border:4px solid var(--red); display:none; align-items:center; justify-content:center; }
   #catch.on { display:flex; }
@@ -71,13 +77,12 @@
   #dark.on { display:flex; }
   #rotate { position:fixed; inset:0; background:var(--blue); color:var(--yellow); display:none; z-index:50; align-items:center; justify-content:center;
     flex-direction:column; gap:16px; font-weight:900; font-size:24px; text-align:center; padding:30px; }
-  @media (orientation:portrait) { body.racing #rotate { display:flex; } }
   #sab { position:absolute; left:0; right:0; bottom:0; display:none; gap:8px; padding:10px; background:rgba(255,255,255,.95); border-top:3px solid var(--ink); align-items:center; }
   #sab.on { display:flex; }
   #sab .opt { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; background:var(--floor); border:2px solid #D6D6D6; font-weight:900; font-size:14px; }
   #sab .opt.sel { border-color:var(--blue); background:var(--yellow); color:var(--blue); }
   #sab .left { font-weight:900; font-size:16px; padding:0 10px; white-space:nowrap; }
-  body.sab #steer, body.sab #pu, body.sab #brake { display:none; }
+  body.sab #steer, body.sab #pu, body.sab #gas { display:none; }
 </style>
 </head>
 <body>
@@ -100,7 +105,8 @@
   </div>
   <div class="card">
     <label>COMANDI</label>
-    <div class="muted">Il kart accelera da solo e, se lasci i tasti, segue la strada. Sterza con ◀ ▶ (pollice sinistro), oggetto col pulsante rotondo (pollice destro). Sulle rampe tocca lo schermo in volo per un TRICK: boost all'atterraggio!</div>
+    <div class="muted">Tieni premuto GAS (pollice destro) per accelerare, lascialo per frenare. Sterza con ◀ ▶ (pollice sinistro), oggetto col pulsante blu accanto al GAS. Sulle rampe tocca lo schermo in volo per un TRICK: boost all'atterraggio! Ai lati della strada c'è il tappeto: ci puoi andare, ma sei più lento.</div>
+    <div class="row"><button class="btn ghost" id="assistBtn"></button></div>
     <div class="row">
       <button class="btn ghost sel" id="modeBtn">STERZO A TASTI</button>
       <button class="btn ghost" id="modeTilt">INCLINAZIONE</button>
@@ -117,7 +123,7 @@
   <canvas id="cv3"></canvas>
   <canvas id="hud"></canvas>
   <div id="steer"><span id="sl">◀</span><span id="sr">▶</span></div>
-  <button id="brake">FRENO</button>
+  <button id="gas">GAS</button>
   <button id="pu"><canvas id="puicon" width="120" height="120"></canvas><span id="pulabel">OGGETTO</span></button>
   <button id="catch"><canvas id="ring" width="300" height="300"></canvas>CATCH!</button>
   <div id="sab">
@@ -140,7 +146,6 @@
   </div>
 </section>
 
-<div id="rotate"><div style="font-size:64px">⟲</div>RUOTA IL TELEFONO IN ORIZZONTALE</div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/three.min.js"></script>
@@ -156,7 +161,8 @@ const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { 
 
 const me = { id: store.get('ikea_pid'), name: store.get('ikea_name') || '', color: store.get('ikea_color') };
 let lobby = null, race = null, state = null, scr = 'join';
-let padSteer = 0, keySteer = 0, braking = false, keyBrake = false, racing = false;
+let padSteer = 0, keySteer = 0, gasHeld = false, keyGas = false, racing = false;
+let assist = store.get('ikea_assist') !== '0';
 const tilt = { on: store.get('ikea_mode') === 'tilt', listening: false, raw: null, base: 0, invert: store.get('ikea_inv') === '1', samples: null, msg: '' };
 let countdown = null, sab = null, ice = null, roulette = null, darkUntil = 0, flashUntil = 0, msg = null;
 const disp = {};
@@ -216,6 +222,9 @@ function updateLobbyInfo() {
 }
 
 /* ---------- control mode: buttons (default) or tilt ---------- */
+function updateAssistUi() { $('assistBtn').textContent = 'STERZO ASSISTITO: ' + (assist ? 'SÌ' : 'NO'); $('assistBtn').classList.toggle('sel', assist); }
+$('assistBtn').onclick = () => { assist = !assist; store.set('ikea_assist', assist ? '1' : '0'); updateAssistUi(); };
+updateAssistUi();
 function updateModeUi() {
   $('modeBtn').classList.toggle('sel', !tilt.on); $('modeTilt').classList.toggle('sel', tilt.on);
   $('tiltbox').classList.toggle('on', tilt.on);
@@ -277,12 +286,14 @@ function padUpdate() {
 pad.addEventListener('pointerdown', e => { e.preventDefault(); tryTrick(); try { pad.setPointerCapture(e.pointerId); } catch (_) {} touches.set(e.pointerId, e.clientX); padUpdate(); });
 pad.addEventListener('pointermove', e => { if (touches.has(e.pointerId)) { touches.set(e.pointerId, e.clientX); padUpdate(); } });
 for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(ev, e => { touches.delete(e.pointerId); padUpdate(); });
-const brake = $('brake');
-brake.addEventListener('pointerdown', e => { e.preventDefault(); tryTrick(); braking = true; brake.classList.add('on'); sendInput(); });
-for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) brake.addEventListener(ev, () => { braking = false; brake.classList.remove('on'); sendInput(); });
+// GAS: hold to accelerate, release to brake
+const gasBtn = $('gas');
+gasBtn.addEventListener('pointerdown', e => { e.preventDefault(); try { gasBtn.setPointerCapture(e.pointerId); } catch (_) {} tryTrick(); gasHeld = true; gasBtn.classList.add('on'); sendInput(); });
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) gasBtn.addEventListener(ev, () => { gasHeld = false; gasBtn.classList.remove('on'); sendInput(); });
 $('pu').addEventListener('pointerdown', e => { e.preventDefault(); if (!tryTrick()) usePowerup(); });
 $('catch').addEventListener('pointerdown', e => { e.preventDefault(); tryCatch(); });
 for (const el of document.querySelectorAll('#race button, #steer')) el.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('contextmenu', e => e.preventDefault());
 // in the air (after a ramp): any tap = trick → boost on landing
 function tryTrick() {
   const m = myState();
@@ -301,13 +312,12 @@ addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' ' && !try
 addEventListener('keyup', e => { keys[e.key] = false; updateKeys(); });
 function updateKeys() {
   keySteer = (keys.ArrowLeft || keys.a ? -1 : 0) + (keys.ArrowRight || keys.d ? 1 : 0);
-  keyBrake = !!(keys.ArrowDown || keys.s);
+  keyGas = !!(keys.ArrowUp || keys.w);
   sendInput();
 }
-// the kart accelerates on its own; FRENO (or ↓) brakes
 function sendInput() {
   if (scr !== 'race' || sab) return;
-  socket.emit('input', { gas: racing && !braking && !keyBrake, steer: Math.round(steerValue() * 100) / 100 });
+  socket.emit('input', { gas: racing && (gasHeld || keyGas), steer: Math.round(steerValue() * 100) / 100, assist });
 }
 setInterval(sendInput, 100);    // ~10 Hz
 
@@ -356,7 +366,7 @@ socket.on('race_countdown', d => {
   countdown = { start: n, end: n + d.ms, name: race.track.name };
   if (tilt.on && tilt.raw != null) calibrate(1200);
   show('race');
-  if (!view) view = window.IKEA_3D.createView($('cv3'), { mode: 'chase', maxDpr: 1.5 });
+  if (!view) view = window.IKEA_3D.createView($('cv3'), { mode: 'chase', maxDpr: 1.25 });
   view.setMode('chase'); view.camH = null;
   view.setTrack(race.track); view.setCars(race.cars);
 });
@@ -434,7 +444,7 @@ function frame(now) {
   const mine = myState();
   if (state) {
     R.lerpCars(disp, state.p, dt);
-    view.update(state, disp, dt, now, { me: me.id, names: true, host: !!sab });
+    view.update(state, disp, dt, now, { me: me.id, names: !!sab, host: !!sab });
   }
   view.render();
   // HUD
@@ -465,7 +475,7 @@ function drawHud(now, cw, ch, mine) {
     const left = countdown.end - now;
     ovHtml = left > 3000
       ? `<div style="font-size:min(9vh,44px);font-weight:900;color:${C.blue}">${countdown.name}</div>
-         <div class="muted">${tilt.on && tilt.raw != null ? 'Tieni il telefono fermo: calibro…' : 'Il kart accelera da solo · ◀ ▶ per sterzare'}</div>`
+         <div class="muted">${tilt.on && tilt.raw != null ? 'Tieni il telefono fermo: calibro…' : 'Tieni premuto GAS al via! · ◀ ▶ per sterzare'}</div>`
       : `<div class="big">${Math.ceil(left / 1000)}</div>`;
   } else if (countdown && now < countdown.end + 800) ovHtml = '<div class="big">VIA!</div>';
   if (ov.dataset.h !== ovHtml) { ov.innerHTML = ovHtml; ov.dataset.h = ovHtml; ov.classList.toggle('on', !!ovHtml); }
@@ -484,7 +494,7 @@ function drawHud(now, cw, ch, mine) {
     ctx.fillStyle = C.ink; ctx.font = '900 18px Verdana, sans-serif';
     ctx.fillText(`GIRO ${Math.min(race.laps, mine.l + 1)}/${race.laps}  ${R.fmtTime(Math.max(0, state.t))}`, 26, 33);
     // minimap
-    drawMinimap(cw - 132, 104, 120, now);
+    drawMinimap(cw - 132, 120, 120, now);
     if (mine.j && !(mine.f & 1024)) { ctx.textAlign = 'center'; ctx.font = '900 26px Verdana, sans-serif'; ctx.lineWidth = 6; ctx.strokeStyle = '#fff';
       ctx.strokeText('TOCCA! TRICK', cw / 2, ch * 0.22); ctx.fillStyle = '#FF7A00'; ctx.fillText('TOCCA! TRICK', cw / 2, ch * 0.22); }
     if (mine.f & 4) { ctx.textAlign = 'center'; ctx.fillStyle = '#006AA7'; ctx.font = '900 18px Verdana, sans-serif'; ctx.fillText('RALLENTATO!', cw / 2, 70); }

@@ -2,7 +2,7 @@
  * Used by the server (require) and by the browser (window.IKEA_TRACKS). */
 (function (root) {
   'use strict';
-  const WORLD = { w: 3200, h: 2000 };
+  const WORLD = { w: 3600, h: 2250 };
 
   // Power-ups: weight = spawn probability in % (sum = 100, gold = 5%)
   const ITEMS = {
@@ -33,11 +33,13 @@
    * width: road width in world units (wide, Mario-Kart style). Edges are solid walls (shelves, partitions).
    * zones: fraction ranges of the lap; wall = style of the walls/furniture in 3D; deco = furniture set.
    * rows: where the item-box rows sit (fraction of the lap). */
-  const SCALE = 2;
+  const SCALE = 2.25;
+  // off-road shoulder (carpet) on both sides: you can leave the road a few metres, slower, then hit the wall
+  const SHOULDER = 70;
   const DEFS = [
     {
       id: 'showroom', name: 'SHOWROOM', desc: 'Tra soggiorni, cucine e camere · curve strette',
-      width: 148, radius: 60, grip: 9, speed: 1, finish: 'START', signature: 'shelf',
+      width: 170, radius: 60, grip: 9, speed: 1, finish: 'START', signature: 'shelf',
       events: ['shelf', 'blackout', 'cart', 'cleaning'],
       rows: [.1, .3, .5, .68, .86],
       pts: [[150,700],[150,480],[260,370],[400,420],[420,600],[560,700],[700,600],[680,350],[560,210],
@@ -52,11 +54,11 @@
     },
     {
       id: 'magazzino', name: 'MAGAZZINO SELF-SERVICE', desc: 'Corsie del magazzino · rettilinei veloci',
-      width: 162, radius: 90, grip: 9, speed: 1, finish: 'START', signature: 'forklift',
+      width: 186, radius: 90, grip: 9, speed: 1, finish: 'START', signature: 'forklift',
       events: ['forklift', 'cart', 'shelf', 'cleaning'],
       rows: [.08, .27, .45, .63, .82],
-      pts: [[150,600],[150,150],[1450,150],[1450,450],[1100,450,105],[560,450,105],[420,550],[560,650,105],
-            [1000,650,105],[1450,650],[1450,860],[150,860]],
+      pts: [[150,600],[150,150],[1450,150],[1450,450],[1100,450,121],[560,450,121],[420,550],[560,650,121],
+            [1000,650,121],[1450,650],[1450,860],[150,860]],
       zones: [
         { a: 0,   b: .3,  name: 'CORSIA 07',      tint: '#E2DCCF', wall: 'rack', color: '#0058A3', deco: ['pallet', 'box'] },
         { a: .3,  b: .5,  name: 'SCAFFALI ALTI',  tint: '#E6DDC8', wall: 'rack', color: '#F28C00', deco: ['pallet', 'cart'] },
@@ -66,10 +68,10 @@
     },
     {
       id: 'ristorante', name: 'RISTORANTE', laps: 3, desc: 'Pavimento scivoloso · slalom tra i tavoli',
-      width: 150, radius: 80, grip: 2.8, speed: 0.78, finish: 'START', signature: 'icecream',
+      width: 172, radius: 80, grip: 2.8, speed: 0.86, finish: 'START', signature: 'icecream',
       events: ['icecream', 'cleaning', 'cart', 'blackout'],
       rows: [.08, .28, .48, .66, .86],
-      pts: [[200,600],[200,250],[450,140],[740,250,250],[1160,250,250],[1420,360,206],[1420,740,206],
+      pts: [[200,600],[200,250],[450,140],[740,250,288],[1160,250,288],[1420,360,237],[1420,740,237],
             [1150,860],[820,740],[500,860],[200,820]],
       obstacles: [
         { x: 820, y: 226, r: 22, kind: 'table' }, { x: 900, y: 274, r: 22, kind: 'table' },
@@ -84,8 +86,8 @@
       ]
     },
     {
-      id: 'smaland', name: 'SMÅLAND', laps: 3, desc: 'Area bimbi · rampe, boost, ostacoli morbidi',
-      width: 148, radius: 65, grip: 7, speed: 0.85, finish: 'START', signature: 'cart',
+      id: 'smaland', name: 'SMÅLAND', desc: 'Area bimbi · rampe, boost, ostacoli morbidi',
+      width: 152, radius: 65, grip: 7, speed: 0.85, finish: 'START', signature: 'cart',
       events: ['cart', 'icecream', 'blackout', 'shelf'],
       rows: [.12, .3, .52, .7, .88],
       pts: [[150,560],[150,350],[320,180],[600,150],[720,400],[900,170],[1200,150],[1450,330],[1300,540],
@@ -109,12 +111,12 @@
     },
     {
       id: 'casse', name: 'CASSE', desc: 'Mercato e casse · bivio corto-stretto o lungo-largo',
-      width: 145, radius: 70, grip: 8, speed: 0.8, finish: 'TACK!', signature: 'blackout',
+      width: 167, radius: 70, grip: 8, speed: 0.8, finish: 'TACK!', signature: 'blackout',
       events: ['blackout', 'forklift', 'cleaning', 'icecream', 'cart'],
       rows: [.1, .28, .45, .66, .86],
-      pts: [[150,620],[150,200],[600,150],[800,380],[1000,150],[1450,200],[1450,520,188],[1450,880,188],
-            [900,880,188],[620,700],[350,880],[150,850]],
-      branch: [[1450,540],[1150,620],[900,860]], branchWidth: 90,
+      pts: [[150,620],[150,200],[600,150],[800,380],[1000,150],[1450,200],[1450,520,216],[1450,880,216],
+            [900,880,216],[620,700],[350,880],[150,850]],
+      branch: [[1450,540],[1150,620],[900,860]], branchWidth: 103,
       zones: [
         { a: 0,   b: .3,  name: 'MERCATO',      tint: '#D9EBD6', wall: 'room', color: '#FFFFFF', deco: ['plant', 'box', 'table'] },
         { a: .3,  b: .5,  name: 'SELF-SERVICE', tint: '#E6DDC8', wall: 'rack', color: '#0058A3', deco: ['pallet', 'cart'] },
@@ -178,7 +180,8 @@
       if (!l2) continue;
       let t = ((x - a.x) * dx + (y - a.y) * dy) / l2; t = t < 0 ? 0 : t > 1 ? 1 : t;
       const px = a.x + dx * t, py = a.y + dy * t, d = Math.hypot(x - px, y - py);
-      if (d < best.d) best = { d, s: cum[i] + t * Math.sqrt(l2), hw: (a.w + (b.w - a.w) * t) / 2, ang: Math.atan2(dy, dx), px, py };
+      if (d < best.d) best = { d, s: cum[i] + t * Math.sqrt(l2), hw: (a.w + (b.w - a.w) * t) / 2, ang: Math.atan2(dy, dx), px, py, i, t,
+        side: (dx * (y - a.y) - dy * (x - a.x)) >= 0 ? 1 : -1, path };
     }
     return best;
   }
@@ -210,9 +213,53 @@
       t.fork = { sF: projectPath(main, a.x, a.y).s, sM: projectPath(main, b.x, b.y).s };
     }
     t.ramps = findRamps(t);
+    computeShoulders(t);
     t.obstacles = (def.obstacles || []).map(o => place(t, o.at == null ? Object.assign({}, o, { x: o.x * S, y: o.y * S }) : o));
     t.pads = (def.pads || []).map(o => place(t, o));
     return t;
+  }
+
+  // usable off-road width on each side of every road point: SHOULDER, less where another road is close
+  function computeShoulders(t) {
+    const paths = [t.main, t.branch].filter(Boolean), segs = [];
+    for (const p of paths) {
+      const m = p.closed ? p.n : p.n - 1;
+      for (let i = 0; i < m; i++) {
+        const a = p.pts[i], b = p.pts[(i + 1) % p.n];
+        segs.push({ p, i, a, b, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, len: Math.hypot(b.x - a.x, b.y - a.y) });
+      }
+    }
+    for (const p of paths) {
+      p.pts.forEach((q, i) => {
+        // only nearby segments of *other* parts of the road can limit the shoulder
+        const cand = segs.filter(g => {
+          if (g.p === p) { let ds = Math.abs(p.cum[g.i] - p.cum[i]); if (p.closed) ds = Math.min(ds, p.L - ds); if (ds < 420) return false; }
+          return Math.hypot(g.mx - q.x, g.my - q.y) < q.w / 2 + SHOULDER * 2 + g.len + 200;
+        });
+        const a = p.pts[p.closed ? (i - 1 + p.n) % p.n : Math.max(0, i - 1)], b = p.pts[p.closed ? (i + 1) % p.n : Math.min(p.n - 1, i + 1)];
+        let dx = b.x - a.x, dy = b.y - a.y; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+        q.sh = {};
+        for (const side of [1, -1]) {
+          let sh = SHOULDER;
+          for (let k = 0; cand.length && k <= SHOULDER * 2; k += 10) {
+            const x = q.x - dy * side * (q.w / 2 + k), y = q.y + dx * side * (q.w / 2 + k);
+            let c = 1e9;
+            for (const g of cand) {
+              const ex = g.b.x - g.a.x, ey = g.b.y - g.a.y, l2 = ex * ex + ey * ey;
+              if (!l2) continue;
+              let u = ((x - g.a.x) * ex + (y - g.a.y) * ey) / l2; u = u < 0 ? 0 : u > 1 ? 1 : u;
+              c = Math.min(c, Math.hypot(x - g.a.x - ex * u, y - g.a.y - ey * u) - (g.a.w + (g.b.w - g.a.w) * u) / 2);
+            }
+            if (c < k + 10) { sh = Math.max(0, Math.min(SHOULDER, k / 2 - 6)); break; }
+          }
+          q.sh[side] = sh;
+        }
+      });
+    }
+  }
+  function shoulderAt(e) {
+    const p = e.path, a = p.pts[e.i], b = p.pts[(e.i + 1) % p.n];
+    return a.sh[e.side] + (b.sh[e.side] - a.sh[e.side]) * e.t;
   }
 
   // jumps go on the 3 straightest stretches (like Turbo Kartz): low curvature before and after the ramp
@@ -271,7 +318,7 @@
     return t.zones.find(z => f >= z.a && f < z.b) || t.zones[t.zones.length - 1];
   }
 
-  const API = { WORLD, SCALE, ITEMS, EVENTS, list, byId, projectPath, pointAt, progressS, clearance, onTrack, nearestEdge, zoneAt };
+  const API = { shoulderAt, WORLD, SCALE, SHOULDER, ITEMS, EVENTS, list, byId, projectPath, pointAt, progressS, clearance, onTrack, nearestEdge, zoneAt };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.IKEA_TRACKS = API;
 })(typeof window !== 'undefined' ? window : globalThis);
