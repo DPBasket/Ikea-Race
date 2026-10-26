@@ -31,8 +31,8 @@
   #url { font-size:12px; color:var(--grey); word-break:break-all; }
   #lobby .players { flex:1; }
   h2 { font-size:15px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
-  #plist { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; align-content:start; }
-  .pchip { display:flex; align-items:center; gap:10px; background:#fff; border:2px solid var(--ink); padding:10px 12px; font-weight:900; font-size:clamp(16px,1.6vw,24px); }
+  #plist { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:8px; align-content:start; overflow:auto; }
+  .pchip { display:flex; align-items:center; gap:8px; background:#fff; border:2px solid var(--ink); padding:6px 10px; font-weight:900; font-size:clamp(14px,1.3vw,20px); }
   .pchip canvas { width:56px; height:32px; }
   .pchip small { font-size:11px; color:var(--grey); margin-left:auto; }
   .empty { color:var(--grey); font-weight:700; padding:20px 0; }
@@ -49,7 +49,8 @@
 
   /* race */
   #race { background:var(--floor); }
-  #cv { position:absolute; inset:0; width:100%; height:100%; }
+  #cv { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  #cv3 { position:absolute; left:0; top:0; height:100%; width:calc(100% - min(320px, 24vw)); display:block; }
   #abort { position:absolute; left:12px; bottom:12px; font-size:11px; padding:.5em .9em; opacity:.5; }
   #abort:hover { opacity:1; }
 
@@ -82,6 +83,7 @@
     <div id="plist"></div>
     <div class="actions" style="margin-top:auto">
       <button class="btn ghost" id="addBots">+ 3 BOT DEMO</button>
+      <button class="btn ghost" id="addBots7">+ 7 BOT</button>
       <button class="btn ghost" id="clearBots">RIMUOVI BOT</button>
       <button class="btn ghost" id="demoRace">▶ GARA DEMO</button>
     </div>
@@ -95,6 +97,7 @@
 </section>
 
 <section id="race" class="screen">
+  <canvas id="cv3"></canvas>
   <canvas id="cv"></canvas>
   <button class="btn ghost" id="abort">✕ ANNULLA GARA</button>
 </section>
@@ -109,6 +112,7 @@
 </section>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/three.min.js"></script>
 <script src="tracks.js"></script>
 <script src="render.js"></script>
 <script>
@@ -170,6 +174,7 @@ function renderLobby() {
   renderTracks();
 }
 $('addBots').onclick = () => socket.emit('demo_add', { n: 3 });
+$('addBots7').onclick = () => socket.emit('demo_add', { n: 7 });
 $('clearBots').onclick = () => socket.emit('demo_clear');
 $('demoRace').onclick = () => {
   if (!lobby || lobby.players.length < 2) socket.emit('demo_add', { n: 3 });
@@ -184,9 +189,11 @@ socket.on('connect', () => socket.emit('host_hello'));
 socket.on('room', r => { room = r; $('code').textContent = r.code; if (r.qr) $('qr').src = r.qr; $('url').textContent = r.url; });
 socket.on('lobby', l => { lobby = l; renderLobby(); if (l.phase === 'lobby' && screen !== 'lobby') show('lobby'); });
 socket.on('host_error', m => { $('msg').textContent = m; });
+const view = window.IKEA_3D.createView($('cv3'), { mode: 'overview', maxDpr: 1.5 });
 socket.on('race_countdown', d => {
   race = { track: TR.byId[d.trackId], laps: d.laps, cars: {} };
   d.players.forEach(p => { race.cars[p.id] = p; });
+  view.setTrack(race.track); view.setCars(race.cars);
   for (const k in disp) delete disp[k];
   state = null; ticker.length = 0; parts.a = [];
   countdownEnd = performance.now() + d.ms;
@@ -194,26 +201,20 @@ socket.on('race_countdown', d => {
 });
 socket.on('race_go', () => { goFlash = performance.now() + 900; });
 socket.on('state', s => { state = s; });
-socket.on('powerup_collected', d => {
-  parts.emit(d.x, d.y, { n: 10, colors: [R.C.blue, R.C.yellow], speed: 80, life: 0.5, square: true });
-});
+socket.on('powerup_collected', d => {});
 socket.on('powerup_used', d => {
   const label = TR.ITEMS[d.item] ? TR.ITEMS[d.item].label : d.item;
   pushTicker(`${carName(d.playerId)} · ${label}`, race && race.cars[d.playerId] ? race.cars[d.playerId].color : null);
-  if (d.item === 'KOTTBULLAR_GOLD') parts.emit(d.x, d.y, { n: 40, colors: ['#F2B705', '#FFDB00', '#fff'], speed: 140, life: 1, square: true });
+  if (d.item === 'KOTTBULLAR_GOLD') view.sparks.emit(d.x, 12, d.y, { n: 40, colors: ['#F2B705', '#FFDB00', '#FFFFFF'], speed: 160, up: 120, life: 1 });
   if (d.item === 'HOTDOG') setBanner(`${carName(d.playerId)} HA UN HOT DOG!`, 1500, R.C.red);
 });
 socket.on('lap_completed', d => {
   if (race && d.lap < race.laps) pushTicker(`${carName(d.playerId)} · GIRO ${d.lap}  ${R.fmtTime(d.time)}`);
 });
 socket.on('fx', f => {
+  view.fx(f);
   switch (f.k) {
     case 'flag': flashUntil = performance.now() + 2000; setBanner(`${carName(f.id)}: BANDIERA SVEDESE! TUTTI RALLENTANO`, 2000, '#006AA7'); break;
-    case 'flame': parts.emit(f.x, f.y, { n: 28, colors: ['#FF7A00', '#E4002B', '#FFDB00'], speed: 160, life: 0.6, size: 5 }); break;
-    case 'hit': parts.emit(f.x, f.y, { n: 14, colors: ['#fff', '#BDBDBD', R.C.red], speed: 90, life: 0.5, size: 4, square: true }); break;
-    case 'splash': parts.emit(f.x, f.y, { n: 18, colors: [R.C.red, '#fff'], speed: 110, life: 0.5, size: 5 }); break;
-    case 'poof': case 'bonk': parts.emit(f.x, f.y, { n: 8, color: '#fff', speed: 60, life: 0.4, size: 4 }); break;
-    case 'clean': parts.emit(f.x, f.y, { n: 12, colors: ['#B3E5FC', '#fff'], speed: 70, life: 0.6, size: 4 }); break;
     case 'catch': pushTicker(`${carName(f.id)} ha preso il gelato!`); break;
     case 'event': setBanner('⚠ ' + (TR.EVENTS[f.ev] || f.ev), 1800, R.C.ink); break;
     case 'finish':
@@ -239,19 +240,13 @@ function frame(now) {
   const cw = cv.clientWidth, ch = cv.clientHeight;
   if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(ch * dpr)) { cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr); }
   const panel = Math.min(320, cw * 0.24);
-  const scale = Math.min((cw - panel - 24) / TR.WORLD.w, (ch - 24) / TR.WORLD.h);
-  const ox = 12 + (cw - panel - 24 - TR.WORLD.w * scale) / 2, oy = (ch - TR.WORLD.h * scale) / 2;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = R.C.floor; ctx.fillRect(0, 0, cw, ch);
-  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * ox, dpr * oy);
-  ctx.drawImage(R.trackCanvas(race.track, scale * dpr), 0, 0, TR.WORLD.w, TR.WORLD.h);
+  ctx.clearRect(0, 0, cw, ch);
   if (state) {
     R.lerpCars(disp, state.p, dt);
-    for (const p of state.p) if (!p.fin && disp[p.i] && !(p.f & 32)) R.carTrail(parts, disp[p.i], p.f, dt);
-    parts.update(dt);
-    R.drawDynamic(ctx, state, disp, race.cars, { t: now, host: true, names: true });
-    parts.draw(ctx);
+    view.update(state, disp, dt, now, { host: true, names: true });
   }
+  view.render();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawHud(now, cw, ch, panel);
 }
@@ -271,7 +266,7 @@ function drawHud(now, cw, ch, panel) {
   ctx.fillText(t > 0 ? R.fmtTime(t) : 'PRONTI…', px + 18, 50);
   if (state) {
     const byId = {}; state.p.forEach(p => { byId[p.i] = p; });
-    const rowH = Math.min(58, (ch - 260) / Math.max(1, state.o.length));
+    const rowH = Math.max(26, Math.min(58, (ch - 240) / Math.max(1, state.o.length)));
     state.o.forEach((id, i) => {
       const p = byId[id], car = race.cars[id];
       if (!p || !car) return;

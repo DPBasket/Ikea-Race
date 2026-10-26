@@ -1,9 +1,9 @@
 # IKEA RACE 🛒🏁
 
-Gioco di corse top-down multiplayer in tempo reale a tema IKEA.
-Lo schermo grande (proiettore) fa da host, i telefoni dei giocatori sono i volanti.
+Gioco di kart multiplayer in tempo reale, in 3D stile Mario Kart, dentro un negozio IKEA.
+Lo schermo grande (proiettore) mostra tutto il negozio dall'alto, ogni telefono ha la visuale da dietro il proprio kart.
 
-**Stack:** Node.js · Express · Socket.io · HTML5 Canvas (vanilla JS, nessun game engine). Tutto in memoria, una stanza sola.
+**Stack:** Node.js · Express · Socket.io · three.js per la grafica 3D (vanilla JS, nessun game engine). Fino a 20 giocatori, 20 colori. Tutto in memoria, una stanza sola.
 
 ## Online (consigliato): nessuna installazione per chi gioca
 
@@ -71,7 +71,9 @@ Puoi anche guidare dal PC: apri `http://localhost:3000/player.html` in un'altra 
 5. **Fine gara:** appena taglia il traguardo il **penultimo** pilota. L'ultimo non deve finire ed è ultimo. Con 2 giocatori finisce al primo arrivo.
 6. Schermata risultati con ordine d'arrivo, tempi per giro e totale + podio animato sugli scaffali → **CONTINUA** torna al flusso del quiz
 
-**Controlli telefono (orizzontale):** inclina a sinistra/destra = sterzo · tieni premuto **GAS** in basso a sinistra (lasciarlo = frenare) · **POWER-UP** in basso a destra, si illumina solo quando hai un oggetto. Se il giroscopio non c'è compaiono ◀ ▶. In sala d'attesa ci sono "Ricalibra" e "Inverti sterzo".
+**Controlli telefono (orizzontale):** il kart **accelera da solo** · sterzo con i tasti **◀ ▶** in basso a sinistra (si può far scorrere il pollice) · **OGGETTO** in basso a destra (dopo la roulette di ~1 s) · **FRENO** accanto. In sala d'attesa si può passare allo sterzo a **inclinazione**.
+
+I bordi della strada sono muri (pareti dello showroom, scaffali del magazzino, ringhiere del ristorante, cuscinoni di Småland, casse): non si esce di pista, si striscia contro. Le file di scatole "?" sono sparse lungo il giro come in Mario Kart; chi è indietro trova oggetti migliori.
 
 **Sabotaggio:** chi arriva passa a una vista dall'alto della pista e tocca lo schermo per lanciare purè, cuscini o scatole sugli altri. Lanci: 1° = 4 … ultimo = 1.
 
@@ -85,16 +87,15 @@ Puoi anche guidare dal PC: apri `http://localhost:3000/player.html` in un'altra 
 | Småland | caos, rampe, boost, ostacoli morbidi | carrello impazzito |
 | Casse | mista, bivio corto‑stretto / lungo‑largo, traguardo "TACK!" | blackout |
 
-Fuori dai bordi gialli si è sul "tappeto IKEA": forte rallentamento. Tagliare sul tappeto non conviene: il progresso del giro non conta i salti.
 
 ## File
 
 ```
 server.js          server: fisica autoritativa 60 Hz, power-up, eventi, sabotaggio, bot, hook quiz
 public/tracks.js   dati e geometria delle piste (condiviso server + browser)
-public/render.js   renderer Canvas condiviso (piste, auto, oggetti, particelle)
-public/host.html   vista proiettore: lobby, gara, risultati + podio
-public/player.html vista telefono: join, controlli, sabotaggio
+public/render.js   grafica: negozio 3D (three.js), kart, oggetti, eventi, particelle + icone 2D, minimappa
+public/host.html   vista proiettore: lobby, negozio 3D dall'alto, risultati + podio
+public/player.html vista telefono: join, visuale da dietro il kart, controlli, sabotaggio
 package.json
 ```
 

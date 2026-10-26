@@ -8,11 +8,14 @@
     "start": "node server.js",
     "demo": "node server.js --demo"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "express": "^4.21.2",
     "qrcode": "^1.5.4",
     "selfsigned": "^2.4.1",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "three": "0.158.0"
   }
 }

@@ -2,7 +2,7 @@
  * Used by the server (require) and by the browser (window.IKEA_TRACKS). */
 (function (root) {
   'use strict';
-  const WORLD = { w: 1600, h: 1000 };
+  const WORLD = { w: 2400, h: 1500 };
 
   // Power-ups: weight = spawn probability in % (sum = 100, gold = 5%)
   const ITEMS = {
@@ -28,91 +28,99 @@
     cleaning: 'PULIZIE IN CORSO'
   };
 
-  /* Track definitions.
-   * pts: closed centerline [x, y, width?]; the first point sits on a straight = start/finish line.
-   * radius: corner rounding; grip: lateral grip (low = drift); zones: fraction ranges of the lap. */
+  /* Track definitions — the route runs through the store like the real IKEA path.
+   * pts: closed centerline [x, y, width?] in layout units (× SCALE = world units); first point = start/finish.
+   * width: road width in world units (wide, Mario-Kart style). Edges are solid walls (shelves, partitions).
+   * zones: fraction ranges of the lap; wall = style of the walls/furniture in 3D; deco = furniture set.
+   * rows: where the item-box rows sit (fraction of the lap). */
+  const SCALE = 1.5;
   const DEFS = [
     {
-      id: 'showroom', name: 'SHOWROOM', desc: 'Tecnico · tante curve strette',
-      width: 66, radius: 55, grip: 9, speed: 1, finish: 'START', signature: 'shelf',
+      id: 'showroom', name: 'SHOWROOM', desc: 'Tra soggiorni, cucine e camere · curve strette',
+      width: 118, radius: 60, grip: 9, speed: 1, finish: 'START', signature: 'shelf',
       events: ['shelf', 'blackout', 'cart', 'cleaning'],
+      rows: [.12, .37, .62, .86],
       pts: [[150,700],[150,480],[260,370],[400,420],[420,600],[560,700],[700,600],[680,350],[560,210],
             [700,100],[900,150],[1000,320],[900,480],[1050,620],[1250,560],[1300,350],[1200,190],[1400,110],
             [1510,300],[1480,600],[1400,860],[1100,910],[700,880],[400,920],[150,890]],
       zones: [
-        { a: 0,   b: .26, name: 'SOGGIORNI',       tint: '#E3ECF5', icon: 'sofa' },
-        { a: .26, b: .5,  name: 'CUCINE',          tint: '#F3ECDD', icon: 'kitchen' },
-        { a: .5,  b: .76, name: 'CAMERE DA LETTO', tint: '#ECE6F3', icon: 'bed' },
-        { a: .76, b: 1,   name: 'ILLUMINAZIONE',   tint: '#F6F1D6', icon: 'lamp' }
+        { a: 0,   b: .26, name: 'SOGGIORNI',       tint: '#DCE6F0', wall: 'room', color: '#FFFFFF', deco: ['sofa', 'rug', 'lamp', 'shelf'] },
+        { a: .26, b: .5,  name: 'CUCINE',          tint: '#F0E6D2', wall: 'room', color: '#F4EBDD', deco: ['kitchen', 'table', 'plant'] },
+        { a: .5,  b: .76, name: 'CAMERE DA LETTO', tint: '#E7E0F0', wall: 'room', color: '#ECE6F3', deco: ['bed', 'wardrobe', 'lamp', 'rug'] },
+        { a: .76, b: 1,   name: 'ILLUMINAZIONE',   tint: '#F3EDCB', wall: 'room', color: '#FFF8DC', deco: ['lamp', 'lamp', 'shelf', 'plant'] }
       ]
     },
     {
-      id: 'magazzino', name: 'MAGAZZINO SELF-SERVICE', desc: 'Veloce · rettilinei lunghi · corsie strette',
-      width: 84, radius: 90, grip: 9, speed: 1, finish: 'START', signature: 'forklift',
+      id: 'magazzino', name: 'MAGAZZINO SELF-SERVICE', desc: 'Corsie del magazzino · rettilinei veloci',
+      width: 130, radius: 90, grip: 9, speed: 1, finish: 'START', signature: 'forklift',
       events: ['forklift', 'cart', 'shelf', 'cleaning'],
-      pts: [[150,600],[150,150],[1450,150],[1450,450],[1100,450,46],[560,450,46],[420,550],[560,650,46],
-            [1000,650,46],[1450,650],[1450,860],[150,860]],
+      rows: [.1, .3, .55, .8],
+      pts: [[150,600],[150,150],[1450,150],[1450,450],[1100,450,84],[560,450,84],[420,550],[560,650,84],
+            [1000,650,84],[1450,650],[1450,860],[150,860]],
       zones: [
-        { a: 0,   b: .3,  name: 'CORSIA 07',      tint: '#E8E2D6', icon: 'shelf' },
-        { a: .3,  b: .5,  name: 'SCAFFALI ALTI',  tint: '#EDE5D2', icon: 'pallet' },
-        { a: .5,  b: .72, name: 'CORSIA STRETTA', tint: '#E6E6EC', icon: 'box' },
-        { a: .72, b: 1,   name: 'RITIRO MERCI',   tint: '#E1EBE3', icon: 'cart' }
+        { a: 0,   b: .3,  name: 'CORSIA 07',      tint: '#E2DCCF', wall: 'rack', color: '#0058A3', deco: ['pallet', 'box'] },
+        { a: .3,  b: .5,  name: 'SCAFFALI ALTI',  tint: '#E6DDC8', wall: 'rack', color: '#F28C00', deco: ['pallet', 'cart'] },
+        { a: .5,  b: .72, name: 'CORSIA 23',      tint: '#DDDDE4', wall: 'rack', color: '#0058A3', deco: ['box', 'pallet'] },
+        { a: .72, b: 1,   name: 'RITIRO MERCI',   tint: '#D9E6DC', wall: 'rack', color: '#F28C00', deco: ['cart', 'box'] }
       ]
     },
     {
       id: 'ristorante', name: 'RISTORANTE', desc: 'Pavimento scivoloso · slalom tra i tavoli',
-      width: 80, radius: 80, grip: 2.6, speed: 0.72, finish: 'START', signature: 'icecream',
+      width: 120, radius: 80, grip: 2.8, speed: 0.78, finish: 'START', signature: 'icecream',
       events: ['icecream', 'cleaning', 'cart', 'blackout'],
-      pts: [[200,600],[200,250],[450,140],[740,250,130],[1160,250,130],[1420,360,110],[1420,740,110],
+      rows: [.08, .33, .58, .84],
+      pts: [[200,600],[200,250],[450,140],[740,250,200],[1160,250,200],[1420,360,165],[1420,740,165],
             [1150,860],[820,740],[500,860],[200,820]],
       obstacles: [
-        { x: 820, y: 228, r: 16, kind: 'table' }, { x: 900, y: 272, r: 16, kind: 'table' },
-        { x: 980, y: 228, r: 16, kind: 'table' }, { x: 1060, y: 272, r: 16, kind: 'table' },
-        { x: 1395, y: 490, r: 14, kind: 'table' }, { x: 1445, y: 620, r: 14, kind: 'table' }
+        { x: 820, y: 226, r: 22, kind: 'table' }, { x: 900, y: 274, r: 22, kind: 'table' },
+        { x: 980, y: 226, r: 22, kind: 'table' }, { x: 1060, y: 274, r: 22, kind: 'table' },
+        { x: 1398, y: 490, r: 20, kind: 'table' }, { x: 1442, y: 620, r: 20, kind: 'table' }
       ],
       zones: [
-        { a: 0,   b: .2,  name: 'BUFFET',      tint: '#F3E9DC', icon: 'tray' },
-        { a: .2,  b: .45, name: 'SALA TAVOLI', tint: '#E4EEF0', icon: 'table' },
-        { a: .45, b: .72, name: 'DOLCI',       tint: '#F4E4EA', icon: 'icecream' },
-        { a: .72, b: 1,   name: 'CAFFÈ',       tint: '#EDE6DE', icon: 'cup' }
+        { a: 0,   b: .2,  name: 'BUFFET',      tint: '#EFE3D0', wall: 'rail', color: '#5D4037', deco: ['counter', 'table'] },
+        { a: .2,  b: .45, name: 'SALA TAVOLI', tint: '#DCE9EC', wall: 'rail', color: '#5D4037', deco: ['table', 'table', 'plant'] },
+        { a: .45, b: .72, name: 'DOLCI',       tint: '#F2DCE4', wall: 'rail', color: '#C2185B', deco: ['icecream', 'table'] },
+        { a: .72, b: 1,   name: 'CAFFÈ',       tint: '#E8DFD4', wall: 'rail', color: '#5D4037', deco: ['table', 'plant', 'counter'] }
       ]
     },
     {
-      id: 'smaland', name: 'SMÅLAND', desc: 'Caos dei bimbi · rampe, boost, ostacoli morbidi',
-      width: 78, radius: 65, grip: 7, speed: 0.82, finish: 'START', signature: 'cart',
+      id: 'smaland', name: 'SMÅLAND', desc: 'Area bimbi · rampe, boost, ostacoli morbidi',
+      width: 118, radius: 65, grip: 7, speed: 0.85, finish: 'START', signature: 'cart',
       events: ['cart', 'icecream', 'blackout', 'shelf'],
+      rows: [.13, .4, .6, .88],
       pts: [[150,560],[150,350],[320,180],[600,150],[720,400],[900,170],[1200,150],[1450,330],[1300,540],
             [1450,790],[1120,880],[900,660],[700,880],[400,860],[150,760]],
       pads: [
-        { at: .06, off: 0, r: 16, type: 'boost' }, { at: .318, off: 0, r: 18, type: 'ramp' },
-        { at: .48, off: -14, r: 16, type: 'boost' }, { at: .806, off: 0, r: 18, type: 'ramp' },
-        { at: .95, off: 12, r: 16, type: 'boost' }
+        { at: .06, off: 0, r: 24, type: 'boost' }, { at: .318, off: 0, r: 26, type: 'ramp' },
+        { at: .48, off: -20, r: 24, type: 'boost' }, { at: .806, off: 0, r: 26, type: 'ramp' },
+        { at: .95, off: 18, r: 24, type: 'boost' }
       ],
       obstacles: [
-        { at: .17, off: 18, r: 11, kind: 'soft' }, { at: .21, off: -20, r: 11, kind: 'soft' },
-        { at: .41, off: 12, r: 11, kind: 'soft' }, { at: .45, off: -22, r: 11, kind: 'soft' },
-        { at: .59, off: 20, r: 11, kind: 'soft' }, { at: .63, off: -12, r: 11, kind: 'soft' },
-        { at: .79, off: -20, r: 11, kind: 'soft' }, { at: .83, off: 15, r: 11, kind: 'soft' }
+        { at: .17, off: 28, r: 15, kind: 'soft' }, { at: .21, off: -30, r: 15, kind: 'soft' },
+        { at: .44, off: 18, r: 15, kind: 'soft' }, { at: .46, off: -32, r: 15, kind: 'soft' },
+        { at: .66, off: 30, r: 15, kind: 'soft' }, { at: .69, off: -18, r: 15, kind: 'soft' },
+        { at: .76, off: -30, r: 15, kind: 'soft' }, { at: .78, off: 22, r: 15, kind: 'soft' }
       ],
       zones: [
-        { a: 0,   b: .25, name: 'PISCINA PALLINE', tint: '#FBE7E1', icon: 'ball' },
-        { a: .25, b: .5,  name: 'SCIVOLI',         tint: '#E2F1E4', icon: 'toy' },
-        { a: .5,  b: .75, name: 'ANGOLO PELUCHE',  tint: '#F7EBD6', icon: 'bear' },
-        { a: .75, b: 1,   name: 'TEATRINO',        tint: '#E6E4F6', icon: 'ball' }
+        { a: 0,   b: .25, name: 'PISCINA PALLINE', tint: '#F8DDD5', wall: 'soft', color: '#E4002B', deco: ['balls', 'toy'] },
+        { a: .25, b: .5,  name: 'SCIVOLI',         tint: '#D7ECDA', wall: 'soft', color: '#00A651', deco: ['toy', 'balls'] },
+        { a: .5,  b: .75, name: 'ANGOLO PELUCHE',  tint: '#F3E4C8', wall: 'soft', color: '#FFB300', deco: ['bear', 'rug'] },
+        { a: .75, b: 1,   name: 'TEATRINO',        tint: '#DEDBF2', wall: 'soft', color: '#7E57C2', deco: ['balls', 'bear'] }
       ]
     },
     {
-      id: 'casse', name: 'CASSE', desc: 'Misto · bivio: corto-stretto o lungo-largo',
-      width: 74, radius: 70, grip: 8, speed: 0.74, finish: 'TACK!', signature: 'blackout',
+      id: 'casse', name: 'CASSE', desc: 'Mercato e casse · bivio corto-stretto o lungo-largo',
+      width: 116, radius: 70, grip: 8, speed: 0.8, finish: 'TACK!', signature: 'blackout',
       events: ['blackout', 'forklift', 'cleaning', 'icecream', 'cart'],
-      pts: [[150,620],[150,200],[600,150],[800,380],[1000,150],[1450,200],[1450,520,100],[1450,880,100],
-            [900,880,100],[620,700],[350,880],[150,850]],
-      branch: [[1450,540],[1150,620],[900,860]], branchWidth: 42,
+      rows: [.12, .35, .5, .85],
+      pts: [[150,620],[150,200],[600,150],[800,380],[1000,150],[1450,200],[1450,520,150],[1450,880,150],
+            [900,880,150],[620,700],[350,880],[150,850]],
+      branch: [[1450,540],[1150,620],[900,860]], branchWidth: 72,
       zones: [
-        { a: 0,   b: .3,  name: 'MERCATO',      tint: '#E3F0E1', icon: 'plant' },
-        { a: .3,  b: .5,  name: 'SELF-SERVICE', tint: '#EDE5D2', icon: 'box' },
-        { a: .5,  b: .78, name: 'CASSE',        tint: '#E3ECF5', icon: 'register' },
-        { a: .78, b: 1,   name: 'BISTRO',       tint: '#F6F1D6', icon: 'cup' }
+        { a: 0,   b: .3,  name: 'MERCATO',      tint: '#D9EBD6', wall: 'room', color: '#FFFFFF', deco: ['plant', 'box', 'table'] },
+        { a: .3,  b: .5,  name: 'SELF-SERVICE', tint: '#E6DDC8', wall: 'rack', color: '#0058A3', deco: ['pallet', 'cart'] },
+        { a: .5,  b: .78, name: 'CASSE',        tint: '#DCE6F0', wall: 'counter', color: '#0058A3', deco: ['register', 'cart'] },
+        { a: .78, b: 1,   name: 'BISTRO',       tint: '#F3EDCB', wall: 'rail', color: '#5D4037', deco: ['table', 'counter'] }
       ]
     }
   ];
@@ -165,13 +173,13 @@
   // nearest point on a path → { s (distance along), d (distance from center), hw (half width), ang }
   function projectPath(path, x, y) {
     const { pts, cum, n, closed } = path, m = closed ? n : n - 1;
-    let best = { d: 1e9, s: 0, hw: 0, ang: 0 };
+    let best = { d: 1e9, s: 0, hw: 0, ang: 0, px: x, py: y };
     for (let i = 0; i < m; i++) {
       const a = pts[i], b = pts[(i + 1) % n], dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
       if (!l2) continue;
       let t = ((x - a.x) * dx + (y - a.y) * dy) / l2; t = t < 0 ? 0 : t > 1 ? 1 : t;
       const px = a.x + dx * t, py = a.y + dy * t, d = Math.hypot(x - px, y - py);
-      if (d < best.d) best = { d, s: cum[i] + t * Math.sqrt(l2), hw: (a.w + (b.w - a.w) * t) / 2, ang: Math.atan2(dy, dx) };
+      if (d < best.d) best = { d, s: cum[i] + t * Math.sqrt(l2), hw: (a.w + (b.w - a.w) * t) / 2, ang: Math.atan2(dy, dx), px, py };
     }
     return best;
   }
@@ -192,16 +200,17 @@
   }
 
   function build(def) {
-    const raw = def.pts.map(p => ({ x: p[0], y: p[1], w: p[2] || def.width }));
-    const main = makePath(densify(fillet(raw, def.radius, true), true, 22), true);
+    const S = SCALE;
+    const raw = def.pts.map(p => ({ x: p[0] * S, y: p[1] * S, w: p[2] || def.width }));
+    const main = makePath(densify(fillet(raw, def.radius * S, true), true, 24), true);
     const t = Object.assign({}, def, { main, L: main.L, branch: null });
     if (def.branch) {
-      const br = def.branch.map(p => ({ x: p[0], y: p[1], w: p[2] || def.branchWidth }));
-      t.branch = makePath(densify(fillet(br, def.radius, false), false, 22), false);
+      const br = def.branch.map(p => ({ x: p[0] * S, y: p[1] * S, w: p[2] || def.branchWidth }));
+      t.branch = makePath(densify(fillet(br, def.radius * S, false), false, 24), false);
       const a = br[0], b = br[br.length - 1];
       t.fork = { sF: projectPath(main, a.x, a.y).s, sM: projectPath(main, b.x, b.y).s };
     }
-    t.obstacles = (def.obstacles || []).map(o => place(t, o));
+    t.obstacles = (def.obstacles || []).map(o => place(t, o.at == null ? Object.assign({}, o, { x: o.x * S, y: o.y * S }) : o));
     t.pads = (def.pads || []).map(o => place(t, o));
     return t;
   }
@@ -227,12 +236,19 @@
     return c;
   }
   const onTrack = (t, x, y, margin) => clearance(t, x, y) <= (margin || 0);
+  // the path piece the point is most "inside" of → used to push cars back from the walls
+  function nearestEdge(t, x, y) {
+    const a = projectPath(t.main, x, y);
+    if (!t.branch) return a;
+    const b = projectPath(t.branch, x, y);
+    return (b.d - b.hw) < (a.d - a.hw) ? b : a;
+  }
   function zoneAt(t, s) {
     const f = (((s % t.L) + t.L) % t.L) / t.L;
     return t.zones.find(z => f >= z.a && f < z.b) || t.zones[t.zones.length - 1];
   }
 
-  const API = { WORLD, ITEMS, EVENTS, list, byId, projectPath, pointAt, progressS, clearance, onTrack, zoneAt };
+  const API = { WORLD, SCALE, ITEMS, EVENTS, list, byId, projectPath, pointAt, progressS, clearance, onTrack, nearestEdge, zoneAt };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.IKEA_TRACKS = API;
 })(typeof window !== 'undefined' ? window : globalThis);

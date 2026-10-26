@@ -13,7 +13,10 @@ const os = require('os');
 const express = require('express');
 const { Server } = require('socket.io');
 const QRCode = require('qrcode');
-const TR = require('./public/tracks.js');
+const fs = require('fs');
+// files can live in ./public or, if uploaded flat, next to server.js
+const STATIC_DIR = fs.existsSync(path.join(__dirname, 'public', 'host.html')) ? path.join(__dirname, 'public') : __dirname;
+const TR = require(path.join(STATIC_DIR, 'tracks.js'));
 
 const PORT = Number(process.env.PORT) || 3000;
 const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 3443;   // phones need HTTPS for the gyroscope
@@ -21,14 +24,15 @@ const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 3443;   // phones need HTTP
 const PUBLIC_URL = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '';
 const HOSTED = !!(PUBLIC_URL || process.env.RENDER);
 const LAPS = 2;
-const MAX_PLAYERS = 8;
-const COUNTDOWN_MS = 5000;        // 2s "hold phone flat" calibration + 3-2-1
+const MAX_PLAYERS = 20;
+const COUNTDOWN_MS = 4500;        // 1.5s intro (+ tilt calibration if used) + 3-2-1
 const RACE_TIMEOUT_MS = 240000;   // safety net
-const BOX_COUNT = 7;
-const COLORS = ['#E4002B', '#0058A3', '#FFDB00', '#00A651', '#FF7A00', '#8E44AD', '#00B5C8', '#FF5FA2', '#5D4037', '#222222'];
-const BOT_NAMES = ['BILLY', 'KALLAX', 'POÄNG', 'LACK', 'MALM', 'EKTORP', 'HEMNES', 'BRIMNES'];
+const BOXES_PER_ROW = 4;
+const COLORS = ['#E4002B', '#0058A3', '#FFDB00', '#00A651', '#FF7A00', '#8E44AD', '#00B5C8', '#FF5FA2', '#5D4037', '#222222',
+  '#FFFFFF', '#7CB342', '#1A237E', '#F48FB1', '#00897B', '#B71C1C', '#9E9E9E', '#FFB74D', '#4FC3F7', '#C0CA33'];
+const BOT_NAMES = ['BILLY', 'KALLAX', 'POÄNG', 'LACK', 'MALM', 'EKTORP', 'HEMNES', 'BRIMNES', 'IVAR', 'PAX', 'SÖDERHAMN', 'FRIHETEN', 'LINNMON', 'ALEX', 'BEKANT', 'STUVA', 'TROFAST', 'NORDLI', 'KLIPPAN', 'MARKUS'];
 // identical for every car – only the color changes
-const CAR = { accel: 240, brake: 330, maxSpeed: 200, turn: 3.4, r: 10 };
+const CAR = { accel: 330, brake: 420, maxSpeed: 290, turn: 2.9, r: 13 };
 
 /* =====================================================================
  * QUIZ INTEGRATION HOOKS – replace / override from the quiz app:
@@ -54,7 +58,8 @@ const hooks = {
 
 /* ---------- server setup ---------- */
 const app = express();
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(STATIC_DIR));
+app.get('/three.min.js', (req, res) => res.sendFile(path.join(path.dirname(require.resolve('three')), 'three.min.js')));
 app.get('/', (req, res) => res.redirect('/host.html'));
 app.get('/play', (req, res) => res.redirect('/player.html' + (req.query.code ? '?code=' + encodeURIComponent(req.query.code) : '')));
 
@@ -92,7 +97,7 @@ const game = {
   trackId: TR.list[0].id,
   track: TR.list[0],
   players: new Map(),
-  boxes: [], boxRespawn: [], projectiles: [], traps: [], events: [], drops: [],
+  boxes: [], projectiles: [], traps: [], events: [], drops: [],
   goAt: 0, raceStart: 0, finishedCount: 0, nextEventAt: 0, order: [], results: null
 };
 
@@ -107,7 +112,7 @@ function newPlayer(o) {
 function resetRacer(p) {
   Object.assign(p, {
     x: 0, y: 0, h: 0, vx: 0, vy: 0, lap: 0, prog: 0, lastS: 0, lapStart: 0, lapTimes: [],
-    finished: false, finishTime: null, rank: 0, place: 0, item: null, onTrack: true,
+    finished: false, finishTime: null, rank: 0, place: 0, item: null, itemReadyAt: 0, onTrack: true,
     boostUntil: 0, boostMul: 1, boostKind: 0, slowUntil: 0, slowMul: 1, slideUntil: 0, spinDir: 1,
     stunUntil: 0, inviUntil: 0, ghostUntil: 0, jumpUntil: 0, throwsLeft: 0,
     stuckT: 0, botItemAt: 0, botThrowAt: 0, botLane: rnd(-0.3, 0.3), botSkill: rnd(0.86, 1),
@@ -150,15 +155,14 @@ function startRace(trackId) {
   const grid = hooks.getStartingGrid(list);
   grid.forEach((p, i) => {
     resetRacer(p);
-    const row = Math.floor(i / 2), col = i % 2;
-    const s = tr.L - 45 - row * 42;
+    const row = Math.floor(i / 3), col = i % 3;
+    const s = tr.L - 60 - row * 52 - col * 14;
     const pt = TR.pointAt(tr.main, s);
-    const off = (col ? 1 : -1) * Math.min(17, pt.w / 4);
+    const off = (col - 1) * Math.min(36, pt.w / 3.4);
     p.x = pt.x - Math.sin(pt.ang) * off; p.y = pt.y + Math.cos(pt.ang) * off; p.h = pt.ang;
     p.lastS = s; p.prog = s - tr.L; p.place = i + 1;
   });
-  Object.assign(game, { boxes: [], boxRespawn: [], projectiles: [], traps: [], events: [], drops: [], finishedCount: 0, results: null });
-  for (let i = 0; i < BOX_COUNT; i++) spawnBox();
+  Object.assign(game, { boxes: makeBoxRows(tr), projectiles: [], traps: [], events: [], drops: [], finishedCount: 0, results: null });
   game.phase = 'countdown';
   game.goAt = Date.now() + COUNTDOWN_MS;
   game.order = grid.map(p => p.id);
@@ -202,22 +206,26 @@ function backToLobby() {
   broadcastLobby();
 }
 
-/* ---------- item boxes ---------- */
-function spawnBox() {
-  const tr = game.track;
-  for (let tries = 0; tries < 20; tries++) {
-    const s = rnd(0, tr.L);
-    if (s < 120 || s > tr.L - 260) continue;    // keep the grid clear
-    const pt = TR.pointAt(tr.main, s), off = rnd(-1, 1) * Math.max(0, pt.w / 2 - 14);
-    const x = pt.x - Math.sin(pt.ang) * off, y = pt.y + Math.cos(pt.ang) * off;
-    if (game.boxes.some(b => Math.hypot(b.x - x, b.y - y) < 120)) continue;
-    game.boxes.push({ id: uid(), x, y });
-    return;
+/* ---------- item boxes: Mario-Kart style rows across the road ---------- */
+function makeBoxRows(tr) {
+  const out = [];
+  for (const f of tr.rows) {
+    const pt = TR.pointAt(tr.main, f * tr.L), nx = -Math.sin(pt.ang), ny = Math.cos(pt.ang);
+    const n = pt.w > 140 ? BOXES_PER_ROW + 1 : BOXES_PER_ROW, span = pt.w - 34;
+    for (let i = 0; i < n; i++) {
+      const off = -span / 2 + span * (i + 0.5) / n;
+      out.push({ id: uid(), x: pt.x + nx * off, y: pt.y + ny * off, active: true, respawnAt: 0 });
+    }
   }
+  return out;
 }
-function randomItem() {
-  let r = Math.random() * 100;
-  for (const [k, v] of Object.entries(TR.ITEMS)) { r -= v.weight; if (r < 0) return k; }
+// better items for whoever is behind (like Mario Kart)
+const STRONG = { KOTTBULLAR_3: 1, KOTTBULLAR_GOLD: 1, PILLOW_RED: 1, HOTDOG: 1, CART: 1, SWEDISH_FLAG: 1, FRAKTA_BAG: 1 };
+function randomItem(p) {
+  const n = Math.max(1, game.players.size - 1), f = p ? (p.place - 1) / n : 0.5;    // 0 = leader, 1 = last
+  const w = Object.entries(TR.ITEMS).map(([k, v]) => [k, v.weight * (STRONG[k] ? 0.35 + 1.6 * f : 1.5 - 1.0 * f)]);
+  let r = Math.random() * w.reduce((a, b) => a + b[1], 0);
+  for (const [k, v] of w) { r -= v; if (r < 0) return k; }
   return 'KOTTBULLAR_1';
 }
 
@@ -231,7 +239,7 @@ function targetAhead(p) {
   return best;
 }
 function useItem(p, now) {
-  if (!p.item || p.finished || game.phase !== 'race') return;
+  if (!p.item || p.finished || game.phase !== 'race' || now < p.itemReadyAt) return;
   const it = p.item; p.item = null;
   const tr = game.track, fx = Math.cos(p.h), fy = Math.sin(p.h);
   switch (it) {
@@ -240,23 +248,23 @@ function useItem(p, now) {
     case 'KOTTBULLAR_GOLD': boost(p, now, 6000, 1.45, 3); break;
     case 'PILLOW_GREEN':
       game.projectiles.push({ id: uid(), type: 'green', owner: p.id, x: p.x + fx * 18, y: p.y + fy * 18, h: p.h,
-        vx: fx * 400 + p.vx * 0.3, vy: fy * 400 + p.vy * 0.3, age: 0, life: 2.2 });
+        vx: fx * 620 + p.vx * 0.3, vy: fy * 620 + p.vy * 0.3, age: 0, life: 2.2 });
       break;
     case 'PILLOW_RED': {
       const t = targetAhead(p);
       game.projectiles.push({ id: uid(), type: 'red', owner: p.id, target: t ? t.id : null, x: p.x + fx * 18, y: p.y + fy * 18,
-        h: p.h, sp: 340, vx: fx * 340, vy: fy * 340, age: 0, life: 4.5 });
+        h: p.h, sp: 500, vx: fx * 500, vy: fy * 500, age: 0, life: 4.5 });
       break;
     }
     case 'MASH_POTATO':
-      game.traps.push({ id: uid(), type: 'mash', x: p.x - fx * 24, y: p.y - fy * 24, r: 13, armAt: now + 250 }); break;
+      game.traps.push({ id: uid(), type: 'mash', x: p.x - fx * 32, y: p.y - fy * 32, r: 18, armAt: now + 250 }); break;
     case 'DAJLIEN_BOX':
-      game.traps.push({ id: uid(), type: 'box', x: p.x - fx * 24, y: p.y - fy * 24, r: 12, armAt: now + 250 }); break;
+      game.traps.push({ id: uid(), type: 'box', x: p.x - fx * 32, y: p.y - fy * 32, r: 16, armAt: now + 250 }); break;
     case 'HOTDOG': p.inviUntil = now + 4000; break;
     case 'CART': {
-      const jump = 230, pt = TR.pointAt(tr.main, p.lastS + jump);
+      const jump = 340, pt = TR.pointAt(tr.main, p.lastS + jump);
       io.emit('fx', { k: 'flame', x: p.x, y: p.y, h: p.h });
-      const sp = Math.max(160, Math.hypot(p.vx, p.vy));
+      const sp = Math.max(240, Math.hypot(p.vx, p.vy));
       p.x = pt.x; p.y = pt.y; p.h = pt.ang; p.vx = Math.cos(pt.ang) * sp; p.vy = Math.sin(pt.ang) * sp;
       p.prog += jump; p.lastS = ((p.lastS + jump) % tr.L + tr.L) % tr.L;
       io.emit('fx', { k: 'flame', x: pt.x, y: pt.y, h: pt.ang });
@@ -303,21 +311,21 @@ function physics(p, dt, now, tr) {
   }
   const fx = Math.cos(p.h), fy = Math.sin(p.h);
   let fwd = p.vx * fx + p.vy * fy, lat = -p.vx * fy + p.vy * fx;
-  p.onTrack = jumping || TR.onTrack(tr, p.x, p.y, 4);
+  p.onTrack = true;
   const boosting = now < p.boostUntil;
   let max = CAR.maxSpeed * (tr.speed || 1);
   if (boosting) max *= p.boostMul;
   if (now < p.slowUntil) max *= p.slowMul;
   if (now < p.inviUntil) max *= 1.15;
-  if (!p.onTrack) max *= 0.42;                      // IKEA carpet
   if (gas || boosting) fwd += CAR.accel * (boosting ? 1.8 : 1) * dt;
   else fwd -= Math.sign(fwd) * Math.min(Math.abs(fwd), CAR.brake * dt);   // releasing gas = brake
-  if (fwd > max) fwd -= Math.min(fwd - max, (p.onTrack ? 260 : 520) * dt);
-  if (fwd < -30) fwd = -30;
+  if (fwd > max) fwd -= Math.min(fwd - max, 380 * dt);
+  if (fwd < -40) fwd = -40;
   const grip = sliding ? 0.6 : jumping ? 0.5 : tr.grip;
   lat *= Math.exp(-grip * dt);
   p.vx = fx * fwd - fy * lat; p.vy = fy * fwd + fx * lat;
   p.x += p.vx * dt; p.y += p.vy * dt;
+  wallCollide(p, tr);
   const W = TR.WORLD.w, H = TR.WORLD.h, m = 12;
   if (p.x < m) { p.x = m; p.vx = Math.abs(p.vx) * 0.3; }
   if (p.x > W - m) { p.x = W - m; p.vx = -Math.abs(p.vx) * 0.3; }
@@ -325,11 +333,25 @@ function physics(p, dt, now, tr) {
   if (p.y > H - m) { p.y = H - m; p.vy = -Math.abs(p.vy) * 0.3; }
 }
 
+// the edges of the road are solid walls (shelves, partitions): slide along them
+function wallCollide(p, tr) {
+  const e = TR.nearestEdge(tr, p.x, p.y), lim = e.hw - CAR.r;
+  if (e.d <= lim || e.d < 0.001) return;
+  const nx = (p.x - e.px) / e.d, ny = (p.y - e.py) / e.d;
+  p.x = e.px + nx * lim; p.y = e.py + ny * lim;
+  const vn = p.vx * nx + p.vy * ny;
+  if (vn > 0) {
+    p.vx -= 1.25 * vn * nx; p.vy -= 1.25 * vn * ny;
+    p.vx *= 0.96; p.vy *= 0.96;
+    if (vn > 120 && Date.now() - (p.lastBonk || 0) > 300) { p.lastBonk = Date.now(); io.emit('fx', { k: 'wall', x: r1(p.x + nx * CAR.r), y: r1(p.y + ny * CAR.r) }); }
+  }
+}
+
 function launch(victim, src, now) {
   if (!hit(victim, 'launch', now)) return;
   const dx = victim.x - src.x, dy = victim.y - src.y, d = Math.hypot(dx, dy) || 1;
-  victim.vx = dx / d * 160 - Math.cos(victim.h) * 90;
-  victim.vy = dy / d * 160 - Math.sin(victim.h) * 90;
+  victim.vx = dx / d * 240 - Math.cos(victim.h) * 130;
+  victim.vy = dy / d * 240 - Math.sin(victim.h) * 130;
 }
 
 function carCollisions(list, now) {
@@ -346,7 +368,7 @@ function carCollisions(list, now) {
     if (bi && !ai) { launch(a, b, now); continue; }
     const rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
     if (rv < 0) {
-      const J = -(1 + 0.7) * rv / 2 + 15;   // deflect both cars
+      const J = -(1 + 0.6) * rv / 2 + 20;   // deflect both cars
       a.vx -= J * nx; a.vy -= J * ny; b.vx += J * nx; b.vy += J * ny;
     }
   }
@@ -355,8 +377,8 @@ function carCollisions(list, now) {
 function eventObstacles(now) {
   const out = [];
   for (const e of game.events) {
-    if (e.type === 'forklift') out.push({ x: e.x, y: e.y, r: 18, ev: 'forklift' });
-    else if (e.type === 'cart') out.push({ x: e.x, y: e.y, r: 11, ev: 'cart' });
+    if (e.type === 'forklift') out.push({ x: e.x, y: e.y, r: 26, ev: 'forklift' });
+    else if (e.type === 'cart') out.push({ x: e.x, y: e.y, r: 16, ev: 'cart' });
     else if (e.type === 'shelf' && now >= e.warnUntil) for (const c of e.circles) out.push({ x: c.x, y: c.y, r: c.r, ev: 'shelf' });
   }
   return out;
@@ -388,14 +410,14 @@ function spawnEvent(now) {
   let ev = null;
   switch (type) {
     case 'forklift': {
-      const pt = ahead(rnd(250, 420)), nx = -Math.sin(pt.ang), ny = Math.cos(pt.ang), dir = Math.random() < 0.5 ? 1 : -1;
-      const reach = pt.w / 2 + 50, sp = 85;
+      const pt = ahead(rnd(380, 600)), nx = -Math.sin(pt.ang), ny = Math.cos(pt.ang), dir = Math.random() < 0.5 ? 1 : -1;
+      const reach = pt.w / 2 + 40, sp = 110;
       ev = { type, x: pt.x - nx * reach * dir, y: pt.y - ny * reach * dir, vx: nx * sp * dir, vy: ny * sp * dir,
         a: Math.atan2(ny * dir, nx * dir), until: now + (2 * reach / sp) * 1000 };
       break;
     }
     case 'shelf': {
-      const pt = ahead(rnd(300, 450)), side = Math.random() < 0.5 ? 1 : -1, hw = pt.w / 2;
+      const pt = ahead(rnd(450, 650)), side = Math.random() < 0.5 ? 1 : -1, hw = pt.w / 2;
       const nx = -Math.sin(pt.ang), ny = Math.cos(pt.ang);
       const circles = [0.2, 0.5, 0.8].map(f => ({ x: pt.x + nx * side * hw * f, y: pt.y + ny * side * hw * f, r: hw * 0.17 + 4 }));
       ev = { type, x: pt.x + nx * side * hw * 0.5, y: pt.y + ny * side * hw * 0.5, a: pt.ang, len: hw, circles,
@@ -403,8 +425,8 @@ function spawnEvent(now) {
       break;
     }
     case 'cart': {
-      const s = who.lastS + rnd(350, 500), pt = TR.pointAt(tr.main, s);
-      ev = { type, s, off: rnd(-0.3, 0.3) * pt.w, sp: -120, x: pt.x, y: pt.y, a: pt.ang + Math.PI, until: now + 6000 };
+      const s = who.lastS + rnd(500, 750), pt = TR.pointAt(tr.main, s);
+      ev = { type, s, off: rnd(-0.3, 0.3) * pt.w, sp: -170, x: pt.x, y: pt.y, a: pt.ang + Math.PI, until: now + 6000 };
       break;
     }
     case 'icecream':
@@ -418,7 +440,7 @@ function spawnEvent(now) {
       break;
     case 'cleaning': {
       const t = game.traps[Math.floor(Math.random() * game.traps.length)];
-      const s = t ? TR.progressS(tr, t.x, t.y).s - 120 : who.lastS + rnd(200, 400);
+      const s = t ? TR.progressS(tr, t.x, t.y).s - 180 : who.lastS + rnd(300, 600);
       ev = { type, s, x: 0, y: 0, a: 0, until: now + 5500 };
       break;
     }
@@ -440,7 +462,7 @@ function updateEvents(now, dt, tr) {
     if (now >= e.until) { e.dead = true; continue; }
     if (e.type === 'forklift') { e.x += e.vx * dt; e.y += e.vy * dt; }
     else if (e.type === 'cart' || e.type === 'cleaning') {
-      e.s += (e.type === 'cart' ? e.sp : 70) * dt;
+      e.s += (e.type === 'cart' ? e.sp : 100) * dt;
       const pt = TR.pointAt(tr.main, e.s), off = e.off || 0;
       e.x = pt.x - Math.sin(pt.ang) * off; e.y = pt.y + Math.cos(pt.ang) * off;
       e.a = e.type === 'cart' ? pt.ang + Math.PI : pt.ang;
@@ -460,24 +482,24 @@ function updateEvents(now, dt, tr) {
 /* ---------- bots (demo mode) ---------- */
 function botThink(p, now, dt, tr) {
   const spd = Math.hypot(p.vx, p.vy), s = p.lastS;
-  const look = TR.pointAt(tr.main, s + 40 + spd * 0.3);
+  const look = TR.pointAt(tr.main, s + 60 + spd * 0.3);
   const lane = p.botLane * look.w * 0.5;
   const tx = look.x - Math.sin(look.ang) * lane, ty = look.y + Math.cos(look.ang) * lane;
   const err = angNorm(Math.atan2(ty - p.y, tx - p.x) - p.h);
   p.input.steer = clamp(err * 2.5, -1, 1);
-  const near = TR.pointAt(tr.main, s + 15), far = TR.pointAt(tr.main, s + 60 + spd * 0.55);
+  const near = TR.pointAt(tr.main, s + 20), far = TR.pointAt(tr.main, s + 90 + spd * 0.55);
   const bend = Math.abs(angNorm(far.ang - near.ang));
   const slip = tr.grip < 4 ? 0.8 : 1;
   const target = CAR.maxSpeed * (tr.speed || 1) * p.botSkill * clamp(1.05 - bend * 0.45 / slip, 0.4, 1);
   p.input.gas = spd < target || !p.onTrack;
   if (Math.random() < 0.004) p.botLane = rnd(-0.35, 0.35);
   // stuck → put back on the centerline
-  if (spd < 14 && now > p.stunUntil) p.stuckT += dt; else p.stuckT = 0;
+  if (spd < 20 && now > p.stunUntil) p.stuckT += dt; else p.stuckT = 0;
   if (p.stuckT > 1.6) {
     const pt = TR.pointAt(tr.main, s);
     p.x = pt.x; p.y = pt.y; p.h = pt.ang; p.vx = p.vy = 0; p.stuckT = 0;
   }
-  if (p.item && !p.botItemAt) p.botItemAt = now + rnd(800, 3500);
+  if (p.item && !p.botItemAt) p.botItemAt = now + rnd(1500, 4000);
   if (p.item && now >= p.botItemAt) { p.botItemAt = 0; useItem(p, now); }
 }
 function botSabotage(p, now) {
@@ -504,10 +526,10 @@ function updateDrops(now) {
     if (now < d.at) continue;
     d.dead = true;
     if (d.type === 'pillow') {
-      for (const p of racers()) if (Math.hypot(p.x - d.x, p.y - d.y) < 36 && now >= p.jumpUntil) hit(p, 'pillow', now);
+      for (const p of racers()) if (Math.hypot(p.x - d.x, p.y - d.y) < 50 && now >= p.jumpUntil) hit(p, 'pillow', now);
       io.emit('fx', { k: 'splash', x: r1(d.x), y: r1(d.y) });
     } else {
-      game.traps.push({ id: uid(), type: d.type, x: d.x, y: d.y, r: d.type === 'box' ? 12 : 13, armAt: now });
+      game.traps.push({ id: uid(), type: d.type, x: d.x, y: d.y, r: d.type === 'box' ? 16 : 18, armAt: now });
     }
   }
   game.drops = game.drops.filter(d => !d.dead);
@@ -537,19 +559,19 @@ function step(now, dt) {
       boost(p, now, 900, 1.35, 1);
     }
     // item boxes
-    if (!p.item) {
-      const b = game.boxes.find(b => Math.hypot(p.x - b.x, p.y - b.y) < 20);
-      if (b) {
-        game.boxes = game.boxes.filter(x => x !== b);
-        game.boxRespawn.push(now + 2500);
-        p.item = randomItem();
+    for (const b of game.boxes) {
+      if (!b.active || Math.hypot(p.x - b.x, p.y - b.y) > 26) continue;
+      b.active = false; b.respawnAt = now + 2200;            // the box breaks even if you already hold an item
+      io.emit('fx', { k: 'box', x: r1(b.x), y: r1(b.y) });
+      if (!p.item) {
+        p.item = randomItem(p); p.itemReadyAt = now + 1100;  // roulette on the phone
         io.emit('powerup_collected', { playerId: p.id, item: p.item, x: r1(b.x), y: r1(b.y) });
       }
     }
     // traps
     if (now >= p.jumpUntil && now >= p.ghostUntil) {
       for (const t of game.traps) {
-        if (t.dead || now < t.armAt || Math.hypot(p.x - t.x, p.y - t.y) > t.r + 9) continue;
+        if (t.dead || now < t.armAt || Math.hypot(p.x - t.x, p.y - t.y) > t.r + 11) continue;
         t.dead = true;
         if (now >= p.inviUntil) hit(p, t.type === 'mash' ? 'mash' : 'box', now);
       }
@@ -558,7 +580,7 @@ function step(now, dt) {
     const pr = TR.progressS(tr, p.x, p.y);
     let ds = pr.s - p.lastS;
     if (ds > L / 2) ds -= L; else if (ds < -L / 2) ds += L;
-    const cap = Math.hypot(p.vx, p.vy) * dt * 3.5 + 8;
+    const cap = Math.hypot(p.vx, p.vy) * dt * 3.5 + 10;
     p.prog += clamp(ds, -cap, cap);
     p.lastS = pr.s;
     if (p.prog >= (p.lap + 1) * L) {
@@ -583,7 +605,7 @@ function step(now, dt) {
     if (obs.some(o => Math.hypot(q.x - o.x, q.y - o.y) < o.r + 6)) { q.dead = true; io.emit('fx', { k: 'poof', x: r1(q.x), y: r1(q.y) }); continue; }
     for (const p of racers()) {
       if ((p.id === q.owner && q.age < 0.5) || now < p.jumpUntil || now < p.ghostUntil) continue;
-      if (Math.hypot(p.x - q.x, p.y - q.y) < 16) { q.dead = true; hit(p, 'pillow', now); break; }
+      if (Math.hypot(p.x - q.x, p.y - q.y) < 22) { q.dead = true; hit(p, 'pillow', now); break; }
     }
   }
   game.projectiles = game.projectiles.filter(q => !q.dead);
@@ -591,7 +613,7 @@ function step(now, dt) {
   updateDrops(now);
   updateEvents(now, dt, tr);
   if (now >= game.nextEventAt) { spawnEvent(now); game.nextEventAt = now + rnd(9000, 14000); }
-  while (game.boxRespawn.length && game.boxRespawn[0] <= now) { game.boxRespawn.shift(); spawnBox(); }
+  for (const b of game.boxes) if (!b.active && now >= b.respawnAt) b.active = true;
   for (const p of game.players.values()) if (p.bot && p.finished) botSabotage(p, now);
   rankAll();
   if (now - game.raceStart > RACE_TIMEOUT_MS) endRace(now);
@@ -631,7 +653,7 @@ function snapshot(now) {
       i: p.id, x: r1(p.x), y: r1(p.y), h: r2(p.h), l: p.lap, it: p.item, f: flags(p, now),
       fin: p.finished ? 1 : 0, rk: p.rank, ft: p.finishTime, sp: Math.round(Math.hypot(p.vx, p.vy)), th: p.throwsLeft
     })),
-    b: game.boxes.map(b => [Math.round(b.x), Math.round(b.y)]),
+    b: game.boxes.filter(b => b.active).map(b => [Math.round(b.x), Math.round(b.y)]),
     q: game.projectiles.map(q => [Math.round(q.x), Math.round(q.y), q.type, r2(q.h || 0)]),
     tr: game.traps.map(t => [Math.round(t.x), Math.round(t.y), t.type]),
     d: game.drops.map(d => [Math.round(d.x), Math.round(d.y), d.type, d.at - now]),

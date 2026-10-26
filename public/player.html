@@ -20,18 +20,20 @@
   .btn { background:var(--blue); color:#fff; font-weight:900; letter-spacing:.06em; text-transform:uppercase; padding:14px 18px; font-size:17px; }
   .btn.y { background:var(--yellow); color:var(--blue); }
   .btn.ghost { background:#fff; color:var(--ink); border:2px solid var(--ink); font-size:13px; padding:10px 12px; }
+  .btn.sel { background:var(--yellow); color:var(--blue); border-color:var(--blue); }
   label { font-size:12px; font-weight:900; letter-spacing:.1em; color:var(--grey); }
   input { width:100%; padding:12px; border:2px solid var(--ink); font-size:20px; font-weight:800; text-transform:uppercase; background:#fff; touch-action:manipulation; }
 
-  /* join + lobby: scrollable forms */
-  #join, #wait, #done { flex-direction:column; gap:14px; padding:max(18px, env(safe-area-inset-top)) 20px 20px; overflow:auto; touch-action:pan-y; max-width:560px; margin:0 auto; }
-  #colors { display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; }
-  .sw { aspect-ratio:1; border:3px solid transparent; }
+  #join, #wait, #done { flex-direction:column; gap:14px; padding:max(18px, env(safe-area-inset-top)) 20px 20px; overflow:auto; touch-action:pan-y; max-width:600px; margin:0 auto; }
+  #colors { display:grid; grid-template-columns:repeat(10, 1fr); gap:6px; }
+  .sw { aspect-ratio:1; border:3px solid rgba(0,0,0,.12); }
   .sw.sel { border-color:var(--ink); box-shadow:inset 0 0 0 3px #fff; }
-  .sw:disabled { opacity:.15; }
+  .sw:disabled { opacity:.12; }
   #err { color:var(--red); font-weight:800; min-height:1.2em; }
   .card { background:#fff; border:2px solid var(--ink); padding:14px; display:flex; flex-direction:column; gap:10px; }
   .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  #tiltbox { display:none; flex-direction:column; gap:8px; }
+  #tiltbox.on { display:flex; }
   #tiltbar { position:relative; height:26px; background:#E0E0E0; }
   #tiltbar i { position:absolute; top:0; bottom:0; width:16px; margin-left:-8px; left:50%; background:var(--blue); }
   #tiltbar::after { content:""; position:absolute; left:50%; top:0; bottom:0; width:2px; background:var(--ink); }
@@ -39,41 +41,43 @@
   .muted { color:var(--grey); font-weight:700; font-size:14px; }
 
   /* race */
-  #race { background:var(--floor); }
-  #cv { position:absolute; inset:0; width:100%; height:100%; }
-  .pad { position:absolute; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; letter-spacing:.06em;
-    touch-action:none; border:4px solid var(--ink); }
-  #gas { left:calc(16px + env(safe-area-inset-left)); bottom:16px; width:min(40vh,42vw); height:min(40vh,42vw); background:var(--yellow); color:var(--blue); font-size:min(7vh,30px); }
-  #gas.on { background:#FFE94D; transform:scale(.96); }
-  #pu { right:calc(16px + env(safe-area-inset-right)); bottom:16px; width:min(32vh,34vw); height:min(32vh,34vw); background:#BDBDBD; color:#fff;
-    flex-direction:column; gap:2px; font-size:min(3.4vh,14px); opacity:.45; border-color:#9E9E9E; }
-  #pu.ready { background:var(--blue); opacity:1; border-color:var(--ink); animation:pulse .8s infinite alternate; }
-  #pu canvas { width:56%; height:56%; }
-  @keyframes pulse { from { box-shadow:0 0 0 0 rgba(255,219,0,.9); } to { box-shadow:0 0 0 12px rgba(255,219,0,0); } }
-  .steer { position:absolute; bottom:16px; width:min(22vh,18vw); height:min(22vh,18vw); background:#fff; font-size:min(8vh,40px); border-radius:12px; display:none; }
-  .steer.on { background:var(--blue); color:#fff; }
-  #sl { left:calc(30px + min(40vh,42vw)); } #sr { right:calc(30px + min(32vh,34vw)); }
-  body.fallback .steer { display:flex; }
-  #catch { position:absolute; left:50%; top:50%; width:min(46vh,40vw); height:min(46vh,40vw); margin:calc(min(46vh,40vw) / -2) 0 0 calc(min(46vh,40vw) / -2);
-    background:#FFF3E0; color:var(--red); font-size:min(7vh,34px); border-color:var(--red); display:none; }
+  #race { background:#E9E6DF; }
+  #cv3, #hud { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #hud { pointer-events:none; }
+  #steer { position:absolute; left:calc(12px + env(safe-area-inset-left)); bottom:12px; width:min(46vw, 400px); height:min(36vh, 150px);
+    display:flex; border:4px solid var(--ink); background:rgba(255,255,255,.55); border-radius:22px; overflow:hidden; touch-action:none; }
+  #steer span { flex:1; display:flex; align-items:center; justify-content:center; font-size:min(12vh,52px); color:var(--blue); font-weight:900; }
+  #steer span + span { border-left:3px solid rgba(0,0,0,.25); }
+  #steer span.on { background:var(--yellow); }
+  body.tilt #steer { display:none; }
+  #pu { position:absolute; right:calc(14px + env(safe-area-inset-right)); bottom:12px; width:min(38vh,30vw); height:min(38vh,30vw); border-radius:50%;
+    background:#BDBDBD; border:4px solid #9E9E9E; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-weight:900; font-size:min(3.2vh,13px); letter-spacing:.05em; opacity:.6; touch-action:none; }
+  #pu.ready { background:var(--blue); border-color:var(--ink); opacity:1; animation:pulse .8s infinite alternate; }
+  #pu canvas { width:58%; height:58%; }
+  @keyframes pulse { from { box-shadow:0 0 0 0 rgba(255,219,0,.9); } to { box-shadow:0 0 0 14px rgba(255,219,0,0); } }
+  #brake { position:absolute; right:calc(min(38vh,30vw) + 26px + env(safe-area-inset-right)); bottom:12px; width:min(20vh,15vw); height:min(20vh,15vw);
+    border-radius:16px; background:#fff; border:3px solid var(--ink); font-weight:900; font-size:min(3vh,13px); touch-action:none; }
+  #brake.on { background:var(--red); color:#fff; }
+  #catch { position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); width:min(44vh,34vw); height:min(44vh,34vw); border-radius:50%;
+    background:#FFF3E0; color:var(--red); font-weight:900; font-size:min(7vh,32px); border:4px solid var(--red); display:none; align-items:center; justify-content:center; }
   #catch.on { display:flex; }
   #catch canvas { position:absolute; inset:-30%; width:160%; height:160%; pointer-events:none; }
   #overlay { position:absolute; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; gap:10px;
-    background:rgba(245,245,245,.88); text-align:center; padding:20px; pointer-events:none; }
+    background:rgba(233,230,223,.6); text-align:center; padding:20px; pointer-events:none; }
   #overlay.on { display:flex; }
-  #overlay .big { font-size:min(22vh,120px); }
+  #overlay .big { font-size:min(26vh,140px); text-shadow:0 0 0 #fff, 4px 4px 0 #fff; }
   #dark { position:absolute; inset:0; background:#000; display:none; color:#333; font-weight:900; font-size:40px; align-items:center; justify-content:center; }
   #dark.on { display:flex; }
   #rotate { position:fixed; inset:0; background:var(--blue); color:var(--yellow); display:none; z-index:50; align-items:center; justify-content:center;
     flex-direction:column; gap:16px; font-weight:900; font-size:24px; text-align:center; padding:30px; }
   @media (orientation:portrait) { body.racing #rotate { display:flex; } }
-
-  /* sabotage */
   #sab { position:absolute; left:0; right:0; bottom:0; display:none; gap:8px; padding:10px; background:rgba(255,255,255,.95); border-top:3px solid var(--ink); align-items:center; }
   #sab.on { display:flex; }
   #sab .opt { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; background:var(--floor); border:2px solid #D6D6D6; font-weight:900; font-size:14px; }
   #sab .opt.sel { border-color:var(--blue); background:var(--yellow); color:var(--blue); }
   #sab .left { font-weight:900; font-size:16px; padding:0 10px; white-space:nowrap; }
+  body.sab #steer, body.sab #pu, body.sab #brake { display:none; }
 </style>
 </head>
 <body>
@@ -82,39 +86,40 @@
   <div class="brand"><b>IKEA</b> RACE</div>
   <div><label>CODICE STANZA</label><input id="code" inputmode="numeric" maxlength="4" autocomplete="off"></div>
   <div><label>IL TUO NOME</label><input id="name" maxlength="12" autocomplete="off" placeholder="MARCO"></div>
-  <div><label>COLORE AUTO</label><div id="colors"></div></div>
+  <div><label>COLORE KART</label><div id="colors"></div></div>
   <div id="err"></div>
   <button class="btn y" id="go">ENTRA IN NEGOZIO ▶</button>
-  <div class="muted">Entrando attivi anche l'inclinazione del telefono (sterzo).</div>
 </section>
 
 <section id="wait" class="screen">
   <div class="brand"><b>IKEA</b> RACE</div>
   <div class="card">
-    <div class="row"><canvas id="mycar" width="160" height="90" style="width:80px;height:45px"></canvas><div class="big" id="myname" style="font-size:30px"></div></div>
+    <div class="row"><canvas id="mycar" width="200" height="120" style="width:100px;height:60px"></canvas><div class="big" id="myname" style="font-size:30px"></div></div>
     <div class="muted" id="wtrack"></div>
     <div style="font-weight:900">Aspetta che l'host prema START…</div>
   </div>
   <div class="card">
-    <label>STERZO A INCLINAZIONE</label>
-    <div id="tiltstate" class="muted"></div>
-    <div id="tiltbar"><i id="tiltdot"></i></div>
+    <label>COMANDI</label>
+    <div class="muted">Il kart accelera da solo. Sterza con i tasti ◀ ▶ (pollice sinistro), usa l'oggetto col pulsante blu (pollice destro). FRENO se serve.</div>
     <div class="row">
-      <button class="btn" id="enableTilt">ATTIVA INCLINAZIONE</button>
-      <button class="btn ghost" id="recal">RICALIBRA</button>
-      <button class="btn ghost" id="invert">INVERTI STERZO</button>
+      <button class="btn ghost sel" id="modeBtn">STERZO A TASTI</button>
+      <button class="btn ghost" id="modeTilt">INCLINAZIONE</button>
     </div>
-    <div class="muted">Tieni il telefono in orizzontale, schermo verso l'alto: inclinalo a sinistra/destra per sterzare. Pollice sinistro = GAS, pollice destro = POWER-UP.</div>
+    <div id="tiltbox">
+      <div id="tiltstate" class="muted"></div>
+      <div id="tiltbar"><i id="tiltdot"></i></div>
+      <div class="row"><button class="btn ghost" id="recal">RICALIBRA</button><button class="btn ghost" id="invert">INVERTI</button></div>
+    </div>
   </div>
 </section>
 
 <section id="race" class="screen">
-  <canvas id="cv"></canvas>
-  <button class="pad" id="gas">GAS</button>
-  <button class="pad steer" id="sl">◀</button>
-  <button class="pad steer" id="sr">▶</button>
-  <button class="pad" id="pu"><canvas id="puicon" width="120" height="120"></canvas><span id="pulabel">POWER-UP</span></button>
-  <button class="pad" id="catch"><canvas id="ring" width="300" height="300"></canvas>CATCH!</button>
+  <canvas id="cv3"></canvas>
+  <canvas id="hud"></canvas>
+  <div id="steer"><span id="sl">◀</span><span id="sr">▶</span></div>
+  <button id="brake">FRENO</button>
+  <button id="pu"><canvas id="puicon" width="120" height="120"></canvas><span id="pulabel">OGGETTO</span></button>
+  <button id="catch"><canvas id="ring" width="300" height="300"></canvas>CATCH!</button>
   <div id="sab">
     <div class="left" id="sableft">LANCI 0</div>
     <button class="opt sel" data-t="mash"><canvas width="60" height="60" style="width:30px;height:30px" data-i="MASH_POTATO"></canvas>PURÈ</button>
@@ -138,6 +143,7 @@
 <div id="rotate"><div style="font-size:64px">⟲</div>RUOTA IL TELEFONO IN ORIZZONTALE</div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/three.min.js"></script>
 <script src="tracks.js"></script>
 <script src="render.js"></script>
 <script>
@@ -150,13 +156,11 @@ const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { 
 
 const me = { id: store.get('ikea_pid'), name: store.get('ikea_name') || '', color: store.get('ikea_color') };
 let lobby = null, race = null, state = null, scr = 'join';
-let gas = false, btnSteer = 0, keySteer = 0, keyGas = false;
-const tilt = { listening: false, fallback: false, raw: null, base: 0, invert: store.get('ikea_inv') === '1', samples: null };
-let countdown = null;           // { start, end, calibrated }
-let sab = null;                 // { left, type }
-let ice = null;                 // { start, ms, done }
-let darkUntil = 0, flashUntil = 0;
-const disp = {}, parts = new R.Particles();
+let padSteer = 0, keySteer = 0, braking = false, keyBrake = false, racing = false;
+const tilt = { on: store.get('ikea_mode') === 'tilt', listening: false, raw: null, base: 0, invert: store.get('ikea_inv') === '1', samples: null, msg: '' };
+let countdown = null, sab = null, ice = null, roulette = null, darkUntil = 0, flashUntil = 0, msg = null;
+const disp = {};
+let view = null;
 
 function show(id) {
   scr = id;
@@ -179,8 +183,8 @@ function renderColors() {
     box.append(b);
   });
 }
-$('go').onclick = async () => {
-  enableTilt();                                     // user gesture → iOS permission prompt
+$('go').onclick = () => {
+  if (tilt.on) enableTilt();
   goFullscreen();
   const name = $('name').value.trim(), code = $('code').value.trim();
   if (!name) { $('err').textContent = 'Scrivi il tuo nome'; return; }
@@ -196,13 +200,13 @@ function goFullscreen() {
   try {
     const p = el.requestFullscreen ? el.requestFullscreen() : null;
     if (p && p.then) p.then(() => window.screen.orientation && window.screen.orientation.lock && window.screen.orientation.lock('landscape').catch(() => {})).catch(() => {});
-  } catch (e) { /* not supported (iOS) */ }
+  } catch (e) { /* iOS: no fullscreen API */ }
 }
 function showWait() {
-  const c = $('mycar').getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 160, 90);
-  c.scale(5, 5); R.drawCar(c, 16, 9, 0, me.color || '#0058A3');
+  const c = $('mycar').getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 200, 120);
+  c.scale(6, 6); R.drawCar(c, 16, 10, 0, me.color || '#0058A3');
   $('myname').textContent = me.name;
-  updateLobbyInfo(); updateTiltUi();
+  updateLobbyInfo(); updateModeUi();
   show('wait');
 }
 function updateLobbyInfo() {
@@ -211,97 +215,100 @@ function updateLobbyInfo() {
   $('wtrack').textContent = `PISTA: ${t ? t.name : ''} · ${lobby.players.length} piloti`;
 }
 
-/* ---------- gyroscope ---------- */
-function orientationAngle() {
-  if (window.screen.orientation && typeof window.screen.orientation.angle === 'number') return window.screen.orientation.angle;
-  return typeof window.orientation === 'number' ? window.orientation : 0;
+/* ---------- control mode: buttons (default) or tilt ---------- */
+function updateModeUi() {
+  $('modeBtn').classList.toggle('sel', !tilt.on); $('modeTilt').classList.toggle('sel', tilt.on);
+  $('tiltbox').classList.toggle('on', tilt.on);
+  document.body.classList.toggle('tilt', tilt.on && tilt.raw != null);
+  $('tiltstate').textContent = tilt.raw != null ? 'Giroscopio attivo ✓' + (tilt.invert ? ' (invertito)' : '') : (tilt.msg || 'Attivazione…');
 }
+$('modeBtn').onclick = () => { tilt.on = false; store.set('ikea_mode', 'btn'); updateModeUi(); };
+$('modeTilt').onclick = () => { tilt.on = true; store.set('ikea_mode', 'tilt'); enableTilt(); updateModeUi(); };
+$('recal').onclick = () => calibrate();
+$('invert').onclick = () => { tilt.invert = !tilt.invert; store.set('ikea_inv', tilt.invert ? '1' : '0'); updateModeUi(); };
 function onOrientation(e) {
   if (e.beta == null) return;
-  const a = orientationAngle();
-  // landscape: left/right tilt is rotation around the device x-axis (beta)
+  const a = (window.screen.orientation && typeof window.screen.orientation.angle === 'number') ? window.screen.orientation.angle : (window.orientation || 0);
   const v = a === 90 ? e.beta : (a === 270 || a === -90) ? -e.beta : e.gamma;
-  tilt.raw = v; tilt.fallback = false;
-  if (tilt.samples) tilt.samples.push(v);
-  document.body.classList.remove('fallback');
+  const first = tilt.raw == null;
+  tilt.raw = v; if (tilt.samples) tilt.samples.push(v);
+  if (first) { calibrate(); updateModeUi(); }
 }
 async function enableTilt() {
   try {
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      const r = await DeviceOrientationEvent.requestPermission();      // iOS 13+
-      if (r !== 'granted') { setFallback('Permesso negato: uso i pulsanti'); return; }
+      const r = await DeviceOrientationEvent.requestPermission();
+      if (r !== 'granted') { tilt.msg = 'Permesso negato: usa i tasti'; tilt.on = false; updateModeUi(); return; }
     }
-  } catch (e) { setFallback('Serve HTTPS per il giroscopio: uso i pulsanti'); return; }
+  } catch (e) { tilt.msg = 'Giroscopio non disponibile: usa i tasti'; updateModeUi(); return; }
   if (!tilt.listening) { window.addEventListener('deviceorientation', onOrientation); tilt.listening = true; }
-  setTimeout(() => { if (tilt.raw == null) setFallback(window.isSecureContext ? 'Giroscopio non trovato: uso i pulsanti' : 'Serve HTTPS per il giroscopio: uso i pulsanti'); else calibrate(); }, 1200);
-  updateTiltUi();
+  setTimeout(() => { if (tilt.raw == null) { tilt.msg = 'Giroscopio non trovato: usa i tasti'; updateModeUi(); } }, 1500);
 }
-function setFallback(msg) { tilt.fallback = true; tilt.msg = msg; document.body.classList.add('fallback'); updateTiltUi(); }
 function calibrate(ms) {
   if (tilt.raw == null) return;
   tilt.samples = [];
-  setTimeout(() => {
-    const s = tilt.samples; tilt.samples = null;
-    if (s && s.length) tilt.base = s.reduce((a, b) => a + b, 0) / s.length;
-  }, ms || 1500);
+  setTimeout(() => { const s = tilt.samples; tilt.samples = null; if (s && s.length) tilt.base = s.reduce((a, b) => a + b, 0) / s.length; }, ms || 1200);
 }
+if (tilt.on) setTimeout(enableTilt, 0);
 function steerValue() {
   if (keySteer) return keySteer;
-  if (tilt.fallback || tilt.raw == null) return btnSteer;
-  let v = (tilt.raw - tilt.base) / 22 * (tilt.invert ? -1 : 1);
-  if (Math.abs(v) < 0.06) v = 0;
-  return Math.max(-1, Math.min(1, v));
+  if (tilt.on && tilt.raw != null) {
+    let v = (tilt.raw - tilt.base) / 20 * (tilt.invert ? -1 : 1);
+    if (Math.abs(v) < 0.08) v = 0;
+    return Math.max(-1, Math.min(1, v));
+  }
+  return padSteer;
 }
-function updateTiltUi() {
-  $('tiltstate').textContent = tilt.raw != null ? 'Giroscopio attivo ✓' + (tilt.invert ? ' (invertito)' : '')
-    : tilt.fallback ? (tilt.msg || 'Uso i pulsanti ◀ ▶') : 'Premi "Attiva inclinazione"';
-  $('enableTilt').style.display = tilt.raw != null ? 'none' : '';
-}
-$('enableTilt').onclick = () => enableTilt();
-$('recal').onclick = () => calibrate();
-$('invert').onclick = () => { tilt.invert = !tilt.invert; store.set('ikea_inv', tilt.invert ? '1' : '0'); updateTiltUi(); };
-setInterval(() => { if (scr === 'wait') $('tiltdot').style.left = (50 + steerValue() * 48) + '%'; }, 50);
+setInterval(() => { if (scr === 'wait' && tilt.on) $('tiltdot').style.left = (50 + steerValue() * 48) + '%'; }, 50);
 
-/* ---------- controls ---------- */
-function holdButton(el, down, up) {
-  const on = e => { e.preventDefault(); down(); el.classList.add('on'); };
-  const off = e => { e.preventDefault(); up(); el.classList.remove('on'); };
-  el.addEventListener('pointerdown', e => { try { el.setPointerCapture(e.pointerId); } catch (_) {} on(e); });
-  el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('lostpointercapture', off);
-  el.addEventListener('contextmenu', e => e.preventDefault());
+/* ---------- touch controls ---------- */
+// steering pad: slide your left thumb between ◀ and ▶ (analog)
+const pad = $('steer'), touches = new Map();
+function padUpdate() {
+  if (!touches.size) { padSteer = 0; } else {
+    const r = pad.getBoundingClientRect(), x = [...touches.values()].pop();
+    let v = (x - (r.left + r.width / 2)) / (r.width * 0.32);
+    if (Math.abs(v) < 0.12) v = 0;
+    padSteer = Math.max(-1, Math.min(1, v));
+  }
+  $('sl').classList.toggle('on', padSteer < 0); $('sr').classList.toggle('on', padSteer > 0);
+  sendInput();
 }
-holdButton($('gas'), () => { gas = true; sendInput(); }, () => { gas = false; sendInput(); });
-holdButton($('sl'), () => { btnSteer = -1; }, () => { if (btnSteer < 0) btnSteer = 0; });
-holdButton($('sr'), () => { btnSteer = 1; }, () => { if (btnSteer > 0) btnSteer = 0; });
+pad.addEventListener('pointerdown', e => { e.preventDefault(); try { pad.setPointerCapture(e.pointerId); } catch (_) {} touches.set(e.pointerId, e.clientX); padUpdate(); });
+pad.addEventListener('pointermove', e => { if (touches.has(e.pointerId)) { touches.set(e.pointerId, e.clientX); padUpdate(); } });
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(ev, e => { touches.delete(e.pointerId); padUpdate(); });
+const brake = $('brake');
+brake.addEventListener('pointerdown', e => { e.preventDefault(); braking = true; brake.classList.add('on'); sendInput(); });
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) brake.addEventListener(ev, () => { braking = false; brake.classList.remove('on'); sendInput(); });
 $('pu').addEventListener('pointerdown', e => { e.preventDefault(); usePowerup(); });
 $('catch').addEventListener('pointerdown', e => { e.preventDefault(); tryCatch(); });
-function usePowerup() { if (myState() && myState().it) { socket.emit('powerup_used'); if (navigator.vibrate) navigator.vibrate(30); } }
+for (const el of document.querySelectorAll('#race button, #steer')) el.addEventListener('contextmenu', e => e.preventDefault());
+function usePowerup() {
+  const m = myState();
+  if (!m || !m.it || roulette) return;
+  socket.emit('powerup_used'); if (navigator.vibrate) navigator.vibrate(30);
+}
 
 const keys = {};
-addEventListener('keydown', e => {
-  keys[e.key] = true;
-  if (e.key === ' ') usePowerup();
-  if (e.key === 'c' || e.key === 'C') tryCatch();
-  updateKeys();
-});
+addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' ') usePowerup(); if (e.key === 'c' || e.key === 'C') tryCatch(); updateKeys(); });
 addEventListener('keyup', e => { keys[e.key] = false; updateKeys(); });
 function updateKeys() {
   keySteer = (keys.ArrowLeft || keys.a ? -1 : 0) + (keys.ArrowRight || keys.d ? 1 : 0);
-  const g = !!(keys.ArrowUp || keys.w);
-  if (g !== keyGas) { keyGas = g; sendInput(); }
+  keyBrake = !!(keys.ArrowDown || keys.s);
+  sendInput();
 }
+// the kart accelerates on its own; FRENO (or ↓) brakes
 function sendInput() {
   if (scr !== 'race' || sab) return;
-  socket.emit('input', { gas: gas || keyGas, steer: Math.round(steerValue() * 100) / 100 });
+  socket.emit('input', { gas: racing && !braking && !keyBrake, steer: Math.round(steerValue() * 100) / 100 });
 }
 setInterval(sendInput, 100);    // ~10 Hz
 
-/* ---------- ice cream event ---------- */
+/* ---------- ice cream ---------- */
 function tryCatch() {
   if (!ice || ice.done) return;
-  const k = (performance.now() - ice.start) / ice.ms;
-  const ok = k > 0.45 && k < 0.8;         // tap while the ring is on the button
-  ice.done = true; ice.ok = ok;
+  const k = (performance.now() - ice.start) / ice.ms, ok = k > 0.45 && k < 0.8;
+  ice.done = true;
   socket.emit('catch', { ok });
   flashMsg(ok ? 'PRESO! +BOOST' : 'MANCATO!', 900);
   setTimeout(() => { ice = null; $('catch').classList.remove('on'); }, 500);
@@ -311,9 +318,8 @@ function drawRing(now) {
   if (!ice) return;
   const k = (now - ice.start) / ice.ms;
   if (k > 1 && !ice.done) { ice.done = true; socket.emit('catch', { ok: false }); setTimeout(() => { ice = null; $('catch').classList.remove('on'); }, 300); }
-  const r = 150 * (1 - k) + 40;
   c.strokeStyle = k > 0.45 && k < 0.8 ? '#00A651' : '#E4002B'; c.lineWidth = 10;
-  c.beginPath(); c.arc(150, 150, Math.max(10, r), 0, Math.PI * 2); c.stroke();
+  c.beginPath(); c.arc(150, 150, Math.max(10, 150 * (1 - k) + 40), 0, Math.PI * 2); c.stroke();
 }
 
 /* ---------- socket ---------- */
@@ -327,37 +333,55 @@ socket.on('lobby', l => {
   lobby = l;
   if (scr === 'join') renderColors();
   if (scr === 'wait') updateLobbyInfo();
-  if (l.phase === 'lobby' && me.id && (scr === 'race' || scr === 'done') && !l.players.some(p => p.id === me.id)) show('join');
+  if (l.phase === 'lobby' && (scr === 'race' || scr === 'done')) {
+    if (l.players.some(p => p.id === me.id)) showWait(); else show('join');
+  }
 });
 socket.on('race_countdown', d => {
   if (!d.players.some(p => p.id === me.id)) return;
   race = { track: TR.byId[d.trackId], laps: d.laps, cars: {} };
   d.players.forEach(p => { race.cars[p.id] = p; });
   for (const k in disp) delete disp[k];
-  state = null; sab = null; ice = null; parts.a = [];
+  state = null; sab = null; ice = null; roulette = null; racing = false;
+  document.body.classList.remove('sab');
   $('sab').classList.remove('on'); $('catch').classList.remove('on');
   const n = performance.now();
-  countdown = { start: n, end: n + d.ms };
-  if (d.ms > 3500 && tilt.raw != null) calibrate(1800);    // "hold phone flat" 2 s
+  countdown = { start: n, end: n + d.ms, name: race.track.name };
+  if (tilt.on && tilt.raw != null) calibrate(1200);
   show('race');
+  if (!view) view = window.IKEA_3D.createView($('cv3'), { mode: 'chase', maxDpr: 1.5 });
+  view.setMode('chase'); view.camH = null;
+  view.setTrack(race.track); view.setCars(race.cars);
 });
-socket.on('state', s => { state = s; });
+socket.on('race_go', () => { racing = true; sendInput(); });
+socket.on('state', s => { state = s; if (s.ph === 'race' && !racing && !sab) { racing = true; } });
 socket.on('icecream', d => { if (sab) return; ice = { start: performance.now(), ms: d.ms }; $('catch').classList.add('on'); if (navigator.vibrate) navigator.vibrate([40, 40, 40]); });
 socket.on('blackout', d => { darkUntil = performance.now() + d.ms; });
-socket.on('powerup_collected', d => { if (d.playerId === me.id && navigator.vibrate) navigator.vibrate(25); });
-socket.on('lap_completed', d => { if (d.playerId === me.id && race && d.lap < race.laps) flashMsg(`GIRO ${d.lap + 1}/${race.laps}`, 1200, R.fmtTime(d.time)); });
+socket.on('powerup_collected', d => {
+  if (d.playerId !== me.id) return;
+  roulette = { start: performance.now(), item: d.item };
+  if (navigator.vibrate) navigator.vibrate(25);
+});
+socket.on('powerup_used', d => {
+  if (d.playerId !== me.id) return;
+  const label = TR.ITEMS[d.item] ? TR.ITEMS[d.item].label : '';
+  if (d.item === 'SWEDISH_FLAG') flashMsg('TUTTI RALLENTANO!', 1200);
+  else if (d.item.startsWith('KOTTBULLAR')) flashMsg('BOOST!', 700);
+  else if (d.item === 'HOTDOG') flashMsg('INVINCIBILE!', 1200);
+  else flashMsg(label, 700);
+});
+socket.on('lap_completed', d => { if (d.playerId === me.id && race && d.lap < race.laps) flashMsg(`ULTIMO GIRO!`, 1500, R.fmtTime(d.time)); });
 socket.on('fx', f => {
+  if (view) view.fx(f);
   if (f.k === 'hit' && f.id === me.id && navigator.vibrate) navigator.vibrate(120);
   if (f.k === 'flag') flashUntil = performance.now() + 2000;
-  if (f.k === 'flame') parts.emit(f.x, f.y, { n: 24, colors: ['#FF7A00', '#E4002B', '#FFDB00'], speed: 150, life: 0.6, size: 5 });
-  if (f.k === 'hit') parts.emit(f.x, f.y, { n: 12, colors: ['#fff', '#BDBDBD'], speed: 80, life: 0.5, size: 4, square: true });
-  if (f.k === 'splash') parts.emit(f.x, f.y, { n: 16, colors: ['#E4002B', '#fff'], speed: 100, life: 0.5, size: 5 });
   if (f.k === 'event' && f.ev !== 'icecream') flashMsg(TR.EVENTS[f.ev] || '', 1300);
 });
 socket.on('sabotage_start', d => {
   sab = { left: d.throws, type: 'mash', rank: d.rank };
-  gas = false; ice = null; $('catch').classList.remove('on');
-  $('sab').classList.add('on');
+  racing = false; ice = null; $('catch').classList.remove('on');
+  document.body.classList.add('sab'); $('sab').classList.add('on');
+  if (view) view.setMode('overview');
   updateSab();
   flashMsg(`${d.rank}° · ${R.fmtTime(d.time)}`, 2500, 'SABOTAGGIO! Tocca la pista per lanciare');
 });
@@ -365,84 +389,60 @@ socket.on('sabotage_throw', d => { if (d.playerId === me.id && sab) { sab.left =
 socket.on('race_finished', d => {
   const r = d.results.find(x => x.playerId === me.id);
   if (!r) return;
-  sab = null; ice = null;
+  sab = null; ice = null; racing = false; document.body.classList.remove('sab');
   $('drank').textContent = r.rank + '°';
   $('dtime').textContent = r.time == null ? 'NON ARRIVATO' : R.fmtTime(r.time);
   show('done');
 });
 
 /* ---------- sabotage ---------- */
-document.querySelectorAll('#sab canvas').forEach(c => { const x = c.getContext('2d'); R.drawItem(x, c.dataset.i, 30, 30, 2.4); });
-document.querySelectorAll('#sab .opt').forEach(b => b.addEventListener('pointerdown', e => {
-  e.preventDefault(); if (!sab) return; sab.type = b.dataset.t; updateSab();
-}));
+document.querySelectorAll('#sab canvas').forEach(c => R.drawItem(c.getContext('2d'), c.dataset.i, 30, 30, 2.4));
+document.querySelectorAll('#sab .opt').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); if (sab) { sab.type = b.dataset.t; updateSab(); } }));
 function updateSab() {
   if (!sab) return;
   $('sableft').textContent = `LANCI ${sab.left}`;
   document.querySelectorAll('#sab .opt').forEach(b => b.classList.toggle('sel', b.dataset.t === sab.type));
 }
-let view = { scale: 1, ox: 0, oy: 0 };
-$('cv').addEventListener('pointerdown', e => {
-  if (!sab || sab.left <= 0) return;
-  const r = $('cv').getBoundingClientRect();
-  const wx = (e.clientX - r.left - view.ox) / view.scale, wy = (e.clientY - r.top - view.oy) / view.scale;
-  socket.emit('sabotage_throw', { type: sab.type, x: wx, y: wy });
-  parts.emit(wx, wy, { n: 10, color: '#E4002B', speed: 60, life: 0.4, size: 4 });
+$('cv3').addEventListener('pointerdown', e => {
+  if (!sab || sab.left <= 0 || !view) return;
+  const w = view.pick(e.clientX, e.clientY);
+  if (!w) return;
+  socket.emit('sabotage_throw', { type: sab.type, x: w.x, y: w.y });
   if (navigator.vibrate) navigator.vibrate(20);
 });
 
-/* ---------- overlays ---------- */
-let msg = null;
+/* ---------- render loop ---------- */
 function flashMsg(text, ms, sub) { msg = { text, sub, until: performance.now() + ms }; }
 const myState = () => (state ? state.p.find(p => p.i === me.id) : null);
-
-/* ---------- render loop ---------- */
-const cv = $('cv'), ctx = cv.getContext('2d');
-let last = performance.now(), lastItem = undefined;
+const hud = $('hud'), ctx = hud.getContext('2d');
+const ITEM_KEYS = Object.keys(TR.ITEMS);
+let last = performance.now(), lastIcon = '';
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (scr !== 'race' || !race) return;
-  const dpr = Math.min(2, window.devicePixelRatio || 1), cw = cv.clientWidth, ch = cv.clientHeight;
-  if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(ch * dpr)) { cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr); }
+  if (scr !== 'race' || !race || !view) return;
   const mine = myState();
-  if (state) R.lerpCars(disp, state.p, dt);
-  const d = disp[me.id];
-  let scale, ox, oy;
-  if (sab || !d) {           // whole-track "throw" view
-    scale = Math.min(cw / TR.WORLD.w, (ch - (sab ? 64 : 0)) / TR.WORLD.h);
-    ox = (cw - TR.WORLD.w * scale) / 2; oy = (ch - (sab ? 64 : 0) - TR.WORLD.h * scale) / 2;
-  } else {                   // chase camera, a little ahead of the car
-    scale = Math.max(0.8, Math.min(2.4, ch / 340));
-    const look = Math.min(60, (mine ? mine.sp : 0) * 0.3);
-    const cx = d.x + Math.cos(d.h) * look, cy = d.y + Math.sin(d.h) * look;
-    ox = cw / 2 - cx * scale; oy = ch * 0.48 - cy * scale;
-  }
-  view = { scale, ox, oy };
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = R.C.floor; ctx.fillRect(0, 0, cw, ch);
-  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * ox, dpr * oy);
-  ctx.drawImage(R.trackCanvas(race.track, Math.min(1.6, scale * dpr)), 0, 0, TR.WORLD.w, TR.WORLD.h);
   if (state) {
-    for (const p of state.p) if (!p.fin && disp[p.i] && (!(p.f & 32) || p.i === me.id)) R.carTrail(parts, disp[p.i], p.f, dt);
-    parts.update(dt);
-    R.drawDynamic(ctx, state, disp, race.cars, { t: now, me: me.id, names: !!sab });
-    parts.draw(ctx);
+    R.lerpCars(disp, state.p, dt);
+    view.update(state, disp, dt, now, { me: me.id, names: true, host: !!sab });
   }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  view.render();
+  // HUD
+  const dpr = Math.min(2, window.devicePixelRatio || 1), cw = hud.clientWidth, ch = hud.clientHeight;
+  if (hud.width !== Math.round(cw * dpr) || hud.height !== Math.round(ch * dpr)) { hud.width = Math.round(cw * dpr); hud.height = Math.round(ch * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, cw, ch);
   drawHud(now, cw, ch, mine);
-  // power-up button
-  const item = mine && !sab ? mine.it : null;
-  if (item !== lastItem) {
-    lastItem = item;
+  // power-up button (with roulette)
+  if (roulette && now - roulette.start > 1100) roulette = null;
+  const item = sab ? null : roulette ? ITEM_KEYS[Math.floor(now / 70) % ITEM_KEYS.length] : (mine ? mine.it : null);
+  const key = (item || '') + (roulette ? 'r' : '');
+  if (key !== lastIcon) {
+    lastIcon = key;
     const pc = $('puicon').getContext('2d'); pc.clearRect(0, 0, 120, 120);
     if (item) { pc.fillStyle = '#fff'; pc.beginPath(); pc.arc(60, 60, 54, 0, 7); pc.fill(); R.drawItem(pc, item, 60, 60, 4); }
-    $('pulabel').textContent = item ? TR.ITEMS[item].label : 'POWER-UP';
-    $('pu').classList.toggle('ready', !!item);
+    $('pulabel').textContent = roulette ? '…' : item ? TR.ITEMS[item].label : 'OGGETTO';
+    $('pu').classList.toggle('ready', !!item && !roulette);
   }
-  const hideDrive = !!sab;
-  $('gas').style.display = $('pu').style.display = hideDrive ? 'none' : '';
-  document.querySelectorAll('.steer').forEach(b => { b.style.visibility = hideDrive ? 'hidden' : ''; });
   $('dark').classList.toggle('on', now < darkUntil);
   drawRing(now);
 }
@@ -450,33 +450,33 @@ requestAnimationFrame(frame);
 
 function drawHud(now, cw, ch, mine) {
   const C = R.C, ov = $('overlay');
-  // countdown with calibration
   let ovHtml = '';
   if (countdown && now < countdown.end) {
     const left = countdown.end - now;
-    if (left > 3000) ovHtml = `<div style="font-size:min(9vh,44px);font-weight:900;color:${C.blue}">TIENI IL TELEFONO PIATTO</div>
-      <div class="muted">${tilt.raw != null ? 'Calibro il giroscopio…' : 'Usa i pulsanti ◀ ▶ per sterzare'}</div>`;
-    else ovHtml = `<div class="big">${Math.ceil(left / 1000)}</div><div class="muted">Tieni premuto GAS al via!</div>`;
-  }
+    ovHtml = left > 3000
+      ? `<div style="font-size:min(9vh,44px);font-weight:900;color:${C.blue}">${countdown.name}</div>
+         <div class="muted">${tilt.on && tilt.raw != null ? 'Tieni il telefono fermo: calibro…' : 'Il kart accelera da solo · ◀ ▶ per sterzare'}</div>`
+      : `<div class="big">${Math.ceil(left / 1000)}</div>`;
+  } else if (countdown && now < countdown.end + 800) ovHtml = '<div class="big">VIA!</div>';
   if (ov.dataset.h !== ovHtml) { ov.innerHTML = ovHtml; ov.dataset.h = ovHtml; ov.classList.toggle('on', !!ovHtml); }
-  if (!mine) return;
+  if (!mine || !state) return;
   ctx.textBaseline = 'middle';
   if (!sab) {
+    // position (big, Mario Kart style) top-right
     const n = state.o.length, place = state.o.indexOf(me.id) + 1;
-    ctx.fillStyle = C.blue; ctx.fillRect(12, 12, 118, 64);
-    ctx.fillStyle = C.yellow; ctx.font = '900 40px Verdana, sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText(place + '°', 22, 46);
-    const pw = ctx.measureText(place + '°').width;
-    ctx.font = '800 15px Verdana, sans-serif'; ctx.fillText('/' + n, 26 + pw, 56);
-    ctx.fillStyle = '#fff'; ctx.fillRect(cw / 2 - 90, 12, 180, 40);
-    ctx.fillStyle = C.ink; ctx.font = '900 18px Verdana, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(`GIRO ${Math.min(race.laps, mine.l + 1)}/${race.laps}   ${R.fmtTime(Math.max(0, state.t))}`, cw / 2, 33);
-    // steering indicator
-    const sv = steerValue(), bx = cw - 132, by = 18;
-    ctx.fillStyle = '#E0E0E0'; ctx.fillRect(bx, by, 116, 10);
-    ctx.fillStyle = C.blue; ctx.fillRect(bx + 58 + sv * 52 - 5, by - 3, 10, 16);
-    if (mine.f & 128) { ctx.fillStyle = C.red; ctx.font = '900 16px Verdana, sans-serif'; ctx.fillText('TAPPETO! TORNA IN PISTA', cw / 2, 72); }
-    if (mine.f & 4) { ctx.fillStyle = '#006AA7'; ctx.font = '900 14px Verdana, sans-serif'; ctx.fillText('RALLENTATO', cw / 2, 94); }
+    ctx.textAlign = 'right'; ctx.font = '900 64px "Noto Sans", Verdana, sans-serif';
+    ctx.lineWidth = 8; ctx.strokeStyle = C.blue; ctx.lineJoin = 'round';
+    ctx.strokeText(place + '°', cw - 18, 50); ctx.fillStyle = C.yellow; ctx.fillText(place + '°', cw - 18, 50);
+    ctx.font = '800 15px Verdana, sans-serif'; ctx.fillStyle = C.ink; ctx.fillText('su ' + n, cw - 20, 92);
+    // lap + time
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(255,255,255,.9)'; R.rr(ctx, 14, 12, 190, 40, 8); ctx.fill();
+    ctx.fillStyle = C.ink; ctx.font = '900 18px Verdana, sans-serif';
+    ctx.fillText(`GIRO ${Math.min(race.laps, mine.l + 1)}/${race.laps}  ${R.fmtTime(Math.max(0, state.t))}`, 26, 33);
+    // minimap
+    drawMinimap(cw - 150, 110, 136, now);
+    if (mine.f & 4) { ctx.textAlign = 'center'; ctx.fillStyle = '#006AA7'; ctx.font = '900 18px Verdana, sans-serif'; ctx.fillText('RALLENTATO!', cw / 2, 70); }
+    if (mine.f & 16) { ctx.textAlign = 'center'; ctx.fillStyle = C.red; ctx.font = '900 18px Verdana, sans-serif'; ctx.fillText('HOT DOG: INVINCIBILE', cw / 2, 70); }
   } else {
     ctx.fillStyle = C.yellow; ctx.fillRect(0, 0, cw, 40);
     ctx.fillStyle = C.blue; ctx.font = '900 17px Verdana, sans-serif'; ctx.textAlign = 'center';
@@ -484,12 +484,31 @@ function drawHud(now, cw, ch, mine) {
   }
   if (msg && now < msg.until) {
     ctx.font = '900 30px Verdana, sans-serif'; ctx.textAlign = 'center';
-    const w = Math.max(ctx.measureText(msg.text).width, msg.sub ? 200 : 0) + 40, y = ch * 0.3;
+    const w = Math.max(ctx.measureText(msg.text).width, msg.sub ? 220 : 0) + 40, y = ch * 0.3;
     ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(cw / 2 - w / 2, y - 30, w, msg.sub ? 84 : 60);
     ctx.fillStyle = C.blue; ctx.fillText(msg.text, cw / 2, y);
     if (msg.sub) { ctx.font = '800 15px Verdana, sans-serif'; ctx.fillStyle = C.ink; ctx.fillText(msg.sub, cw / 2, y + 36); }
   }
   if (now < flashUntil && Math.floor(now / 140) % 2) { ctx.fillStyle = 'rgba(0,106,167,.25)'; ctx.fillRect(0, 0, cw, ch); }
+}
+function drawMinimap(x, y, w, now) {
+  const t = race.track, s = w / TR.WORLD.w, h = TR.WORLD.h * s;
+  ctx.save(); ctx.globalAlpha = 0.85;
+  ctx.fillStyle = 'rgba(255,255,255,.7)'; R.rr(ctx, x - 6, y - 6, w + 12, h + 12, 8); ctx.fill();
+  ctx.translate(x, y); ctx.scale(s, s);
+  ctx.strokeStyle = '#9E9E9E'; ctx.lineWidth = 60; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const p of [t.main, t.branch].filter(Boolean)) {
+    ctx.beginPath(); p.pts.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); if (p.closed) ctx.closePath(); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  for (const p of state.p) {
+    if (p.fin || !disp[p.i] || ((p.f & 32) && p.i !== me.id)) continue;
+    const car = race.cars[p.i]; if (!car) continue;
+    const isMe = p.i === me.id;
+    ctx.fillStyle = car.color; ctx.strokeStyle = isMe ? '#111' : '#fff'; ctx.lineWidth = isMe ? 18 : 10;
+    ctx.beginPath(); ctx.arc(disp[p.i].x, disp[p.i].y, isMe ? 60 : 40, 0, 7); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
 }
 </script>
 </body>
