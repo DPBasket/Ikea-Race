@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IKEA RACE · Host</title>
+<style>
+  :root { --blue:#0058A3; --yellow:#FFDB00; --ink:#111; --floor:#F5F5F5; --track:#E0E0E0; --grey:#767676; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; background:var(--floor); color:var(--ink); overflow:hidden;
+    font-family:"Noto Sans", Verdana, "Helvetica Neue", Arial, sans-serif; }
+  button { font:inherit; cursor:pointer; border:0; }
+  .screen { position:absolute; inset:0; display:none; }
+  .screen.on { display:flex; }
+  .brand { font-weight:900; font-size:clamp(28px,4vw,56px); letter-spacing:.02em; line-height:1; }
+  .brand b { background:var(--blue); color:var(--yellow); padding:.05em .25em; }
+  .tag { display:inline-block; background:var(--yellow); color:var(--blue); font-weight:900; text-transform:uppercase; padding:.2em .5em; letter-spacing:.04em; }
+  .btn { background:var(--blue); color:#fff; font-weight:900; text-transform:uppercase; letter-spacing:.06em; padding:.9em 1.4em; font-size:16px; }
+  .btn.y { background:var(--yellow); color:var(--blue); }
+  .btn.ghost { background:#fff; color:var(--ink); border:2px solid var(--ink); }
+  .btn:disabled { background:#BDBDBD; color:#fff; cursor:not-allowed; }
+
+  /* lobby */
+  #lobby { padding:3vh 3vw; gap:3vw; }
+  #lobby .col { display:flex; flex-direction:column; gap:2vh; min-width:0; }
+  #lobby .join { width:min(30vw,420px); }
+  .codebox { background:#fff; border:3px solid var(--ink); padding:1.5vh 1.2vw; }
+  .codebox small { display:block; font-weight:800; color:var(--grey); letter-spacing:.1em; }
+  .codebox .code { font-size:clamp(48px,7vw,104px); font-weight:900; letter-spacing:.12em; color:var(--blue); line-height:1.05; }
+  #qr { width:100%; aspect-ratio:1; background:#fff; border:3px solid var(--ink); image-rendering:pixelated; display:block; }
+  #url { font-size:12px; color:var(--grey); word-break:break-all; }
+  #lobby .players { flex:1; }
+  h2 { font-size:15px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
+  #plist { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; align-content:start; }
+  .pchip { display:flex; align-items:center; gap:10px; background:#fff; border:2px solid var(--ink); padding:10px 12px; font-weight:900; font-size:clamp(16px,1.6vw,24px); }
+  .pchip canvas { width:56px; height:32px; }
+  .pchip small { font-size:11px; color:var(--grey); margin-left:auto; }
+  .empty { color:var(--grey); font-weight:700; padding:20px 0; }
+  #lobby .tracks { width:min(36vw,520px); }
+  #tlist { display:flex; flex-direction:column; gap:8px; }
+  .tcard { display:flex; gap:12px; align-items:center; background:#fff; border:2px solid #D6D6D6; padding:8px; text-align:left; }
+  .tcard.sel { border-color:var(--blue); box-shadow:inset 0 0 0 3px var(--blue); }
+  .tcard canvas { width:120px; height:75px; flex:none; }
+  .tcard b { display:block; font-size:16px; font-weight:900; }
+  .tcard span { font-size:12px; color:var(--grey); }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; }
+  #start { font-size:22px; flex:1; padding:.8em; }
+  #msg { color:#E4002B; font-weight:800; min-height:1.2em; }
+
+  /* race */
+  #race { background:var(--floor); }
+  #cv { position:absolute; inset:0; width:100%; height:100%; }
+  #abort { position:absolute; left:12px; bottom:12px; font-size:11px; padding:.5em .9em; opacity:.5; }
+  #abort:hover { opacity:1; }
+
+  /* results */
+  #results { flex-direction:row; }
+  #podium { flex:1.3; min-width:0; height:100%; display:block; }
+  #rside { flex:1; display:flex; flex-direction:column; padding:4vh 3vw; gap:2vh; background:#fff; border-left:3px solid var(--ink); }
+  #rtable { display:flex; flex-direction:column; gap:6px; overflow:auto; }
+  .rrow { display:grid; grid-template-columns:54px 1fr auto; gap:10px; align-items:center; padding:10px 12px; border:2px solid var(--ink); background:var(--floor); }
+  .rrow .rk { font-size:28px; font-weight:900; color:var(--blue); }
+  .rrow .nm { font-size:20px; font-weight:900; display:flex; align-items:center; gap:8px; }
+  .rrow .nm i { width:14px; height:14px; display:inline-block; }
+  .rrow .tm { font-size:22px; font-weight:900; text-align:right; }
+  .rrow .laps { grid-column:2 / 4; font-size:12px; color:var(--grey); font-weight:700; }
+  .rrow.first { background:var(--yellow); }
+  #continue { font-size:22px; margin-top:auto; }
+</style>
+</head>
+<body>
+
+<section id="lobby" class="screen on">
+  <div class="col join">
+    <div class="brand"><b>IKEA</b> RACE</div>
+    <div class="codebox"><small>CODICE STANZA</small><div class="code" id="code">····</div></div>
+    <img id="qr" alt="QR per entrare">
+    <div id="url"></div>
+  </div>
+  <div class="col players">
+    <h2>Piloti in negozio <span id="pcount" class="tag">0</span></h2>
+    <div id="plist"></div>
+    <div class="actions" style="margin-top:auto">
+      <button class="btn ghost" id="addBots">+ 3 BOT DEMO</button>
+      <button class="btn ghost" id="clearBots">RIMUOVI BOT</button>
+      <button class="btn ghost" id="demoRace">▶ GARA DEMO</button>
+    </div>
+  </div>
+  <div class="col tracks">
+    <h2>Scegli la pista</h2>
+    <div id="tlist"></div>
+    <div id="msg"></div>
+    <div class="actions"><button class="btn y" id="start">START</button></div>
+  </div>
+</section>
+
+<section id="race" class="screen">
+  <canvas id="cv"></canvas>
+  <button class="btn ghost" id="abort">✕ ANNULLA GARA</button>
+</section>
+
+<section id="results" class="screen">
+  <canvas id="podium"></canvas>
+  <div id="rside">
+    <div class="brand" style="font-size:40px">TACK! <span class="tag" id="rtrack"></span></div>
+    <div id="rtable"></div>
+    <button class="btn y" id="continue">CONTINUA ▶</button>
+  </div>
+</section>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="tracks.js"></script>
+<script src="render.js"></script>
+<script>
+'use strict';
+const TR = window.IKEA_TRACKS, R = window.IKEA_RENDER;
+const $ = id => document.getElementById(id);
+const socket = io();
+
+let lobby = null, room = null, selTrack = TR.list[0].id;
+let race = null, state = null;           // race = { track, cars: {id:{name,color}} }
+const disp = {}, parts = new R.Particles();
+let countdownEnd = 0, goFlash = 0, flashUntil = 0, darkUntil = 0, banner = null;
+const ticker = [];
+let screen = 'lobby';
+
+function show(id) {
+  screen = id;
+  for (const s of document.querySelectorAll('.screen')) s.classList.toggle('on', s.id === id);
+}
+function pushTicker(text, color) { ticker.unshift({ text, color: color || R.C.ink, at: performance.now() }); ticker.length = Math.min(ticker.length, 5); }
+function setBanner(text, ms, color) { banner = { text, until: performance.now() + (ms || 1800), color: color || R.C.blue }; }
+const carName = id => (race && race.cars[id] ? race.cars[id].name : '?');
+
+/* ---------- lobby ---------- */
+function carChip(color) {
+  const c = document.createElement('canvas'); c.width = 112; c.height = 64;
+  const x = c.getContext('2d'); x.scale(4, 4); R.drawCar(x, 14, 8, 0, color);
+  return c;
+}
+function renderTracks() {
+  const box = $('tlist'); box.innerHTML = '';
+  TR.list.forEach(t => {
+    const b = document.createElement('button'); b.className = 'tcard' + (t.id === selTrack ? ' sel' : '');
+    const c = document.createElement('canvas'); c.width = 240; c.height = 150;
+    c.getContext('2d').drawImage(R.trackCanvas(t, 0.3), 0, 0, 240, 150);
+    const d = document.createElement('div'); d.innerHTML = `<b>${t.name}</b><span>${t.desc}</span>`;
+    b.append(c, d);
+    b.onclick = () => { selTrack = t.id; socket.emit('select_track', { trackId: t.id }); renderTracks(); };
+    box.append(b);
+  });
+}
+function renderLobby() {
+  if (!lobby) return;
+  selTrack = lobby.trackId || selTrack;
+  const list = $('plist'); list.innerHTML = '';
+  lobby.players.forEach(p => {
+    const d = document.createElement('div'); d.className = 'pchip';
+    d.append(carChip(p.color));
+    const n = document.createElement('span'); n.textContent = p.name; d.append(n);
+    if (p.bot) { const s = document.createElement('small'); s.textContent = 'BOT'; d.append(s); }
+    else if (!p.connected) { const s = document.createElement('small'); s.textContent = 'OFFLINE'; d.append(s); }
+    list.append(d);
+  });
+  if (!lobby.players.length) list.innerHTML = '<div class="empty">Inquadra il QR col telefono per entrare…</div>';
+  $('pcount').textContent = lobby.players.length;
+  const n = lobby.players.length;
+  $('start').disabled = n < 2;
+  $('msg').textContent = n === 1 ? 'Serve almeno un secondo pilota (o aggiungi i bot demo).' : '';
+  renderTracks();
+}
+$('addBots').onclick = () => socket.emit('demo_add', { n: 3 });
+$('clearBots').onclick = () => socket.emit('demo_clear');
+$('demoRace').onclick = () => {
+  if (!lobby || lobby.players.length < 2) socket.emit('demo_add', { n: 3 });
+  setTimeout(() => socket.emit('start_race', { trackId: selTrack }), 150);
+};
+$('start').onclick = () => socket.emit('start_race', { trackId: selTrack });
+$('abort').onclick = () => { if (confirm('Annullare la gara e tornare alla lobby?')) socket.emit('abort_race'); };
+$('continue').onclick = () => socket.emit('continue');
+
+/* ---------- socket ---------- */
+socket.on('connect', () => socket.emit('host_hello'));
+socket.on('room', r => { room = r; $('code').textContent = r.code; if (r.qr) $('qr').src = r.qr; $('url').textContent = r.url; });
+socket.on('lobby', l => { lobby = l; renderLobby(); if (l.phase === 'lobby' && screen !== 'lobby') show('lobby'); });
+socket.on('host_error', m => { $('msg').textContent = m; });
+socket.on('race_countdown', d => {
+  race = { track: TR.byId[d.trackId], laps: d.laps, cars: {} };
+  d.players.forEach(p => { race.cars[p.id] = p; });
+  for (const k in disp) delete disp[k];
+  state = null; ticker.length = 0; parts.a = [];
+  countdownEnd = performance.now() + d.ms;
+  show('race');
+});
+socket.on('race_go', () => { goFlash = performance.now() + 900; });
+socket.on('state', s => { state = s; });
+socket.on('powerup_collected', d => {
+  parts.emit(d.x, d.y, { n: 10, colors: [R.C.blue, R.C.yellow], speed: 80, life: 0.5, square: true });
+});
+socket.on('powerup_used', d => {
+  const label = TR.ITEMS[d.item] ? TR.ITEMS[d.item].label : d.item;
+  pushTicker(`${carName(d.playerId)} · ${label}`, race && race.cars[d.playerId] ? race.cars[d.playerId].color : null);
+  if (d.item === 'KOTTBULLAR_GOLD') parts.emit(d.x, d.y, { n: 40, colors: ['#F2B705', '#FFDB00', '#fff'], speed: 140, life: 1, square: true });
+  if (d.item === 'HOTDOG') setBanner(`${carName(d.playerId)} HA UN HOT DOG!`, 1500, R.C.red);
+});
+socket.on('lap_completed', d => {
+  if (race && d.lap < race.laps) pushTicker(`${carName(d.playerId)} · GIRO ${d.lap}  ${R.fmtTime(d.time)}`);
+});
+socket.on('fx', f => {
+  switch (f.k) {
+    case 'flag': flashUntil = performance.now() + 2000; setBanner(`${carName(f.id)}: BANDIERA SVEDESE! TUTTI RALLENTANO`, 2000, '#006AA7'); break;
+    case 'flame': parts.emit(f.x, f.y, { n: 28, colors: ['#FF7A00', '#E4002B', '#FFDB00'], speed: 160, life: 0.6, size: 5 }); break;
+    case 'hit': parts.emit(f.x, f.y, { n: 14, colors: ['#fff', '#BDBDBD', R.C.red], speed: 90, life: 0.5, size: 4, square: true }); break;
+    case 'splash': parts.emit(f.x, f.y, { n: 18, colors: [R.C.red, '#fff'], speed: 110, life: 0.5, size: 5 }); break;
+    case 'poof': case 'bonk': parts.emit(f.x, f.y, { n: 8, color: '#fff', speed: 60, life: 0.4, size: 4 }); break;
+    case 'clean': parts.emit(f.x, f.y, { n: 12, colors: ['#B3E5FC', '#fff'], speed: 70, life: 0.6, size: 4 }); break;
+    case 'catch': pushTicker(`${carName(f.id)} ha preso il gelato!`); break;
+    case 'event': setBanner('⚠ ' + (TR.EVENTS[f.ev] || f.ev), 1800, R.C.ink); break;
+    case 'finish':
+      pushTicker(`${carName(f.id)} · ARRIVATO ${f.rank}° · ${R.fmtTime(f.time)}`, race && race.cars[f.id] ? race.cars[f.id].color : null);
+      setBanner(`${carName(f.id)} ${f.rank}°!`, 1600, R.C.blue);
+      break;
+  }
+});
+socket.on('blackout', d => { darkUntil = performance.now() + d.ms; });
+socket.on('sabotage_throw', d => pushTicker(`${carName(d.playerId)} lancia dall'alto!`, R.C.red));
+socket.on('race_finished', d => showResults(d));
+socket.on('quiz_continue', () => { /* TODO(quiz): the host would hand control back to the quiz app here */ });
+
+/* ---------- race render ---------- */
+const cv = $('cv'), ctx = cv.getContext('2d');
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (screen === 'results') { drawPodium(now); return; }
+  if (screen !== 'race' || !race) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cw = cv.clientWidth, ch = cv.clientHeight;
+  if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(ch * dpr)) { cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr); }
+  const panel = Math.min(320, cw * 0.24);
+  const scale = Math.min((cw - panel - 24) / TR.WORLD.w, (ch - 24) / TR.WORLD.h);
+  const ox = 12 + (cw - panel - 24 - TR.WORLD.w * scale) / 2, oy = (ch - TR.WORLD.h * scale) / 2;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = R.C.floor; ctx.fillRect(0, 0, cw, ch);
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * ox, dpr * oy);
+  ctx.drawImage(R.trackCanvas(race.track, scale * dpr), 0, 0, TR.WORLD.w, TR.WORLD.h);
+  if (state) {
+    R.lerpCars(disp, state.p, dt);
+    for (const p of state.p) if (!p.fin && disp[p.i] && !(p.f & 32)) R.carTrail(parts, disp[p.i], p.f, dt);
+    parts.update(dt);
+    R.drawDynamic(ctx, state, disp, race.cars, { t: now, host: true, names: true });
+    parts.draw(ctx);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawHud(now, cw, ch, panel);
+}
+requestAnimationFrame(frame);
+
+function drawHud(now, cw, ch, panel) {
+  const C = R.C;
+  // standings panel
+  const px = cw - panel;
+  ctx.fillStyle = '#fff'; ctx.fillRect(px, 0, panel, ch);
+  ctx.fillStyle = C.ink; ctx.fillRect(px, 0, 3, ch);
+  ctx.fillStyle = C.blue; ctx.fillRect(px + 3, 0, panel - 3, 70);
+  ctx.fillStyle = C.yellow; ctx.font = '900 20px Verdana, Arial, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(race.track.name, px + 18, 24, panel - 30);
+  ctx.fillStyle = '#fff'; ctx.font = '800 15px Verdana, Arial, sans-serif';
+  const t = state ? state.t : -(countdownEnd - now);
+  ctx.fillText(t > 0 ? R.fmtTime(t) : 'PRONTI…', px + 18, 50);
+  if (state) {
+    const byId = {}; state.p.forEach(p => { byId[p.i] = p; });
+    const rowH = Math.min(58, (ch - 260) / Math.max(1, state.o.length));
+    state.o.forEach((id, i) => {
+      const p = byId[id], car = race.cars[id];
+      if (!p || !car) return;
+      const y = 84 + i * rowH;
+      ctx.fillStyle = i % 2 ? '#fff' : C.floor; ctx.fillRect(px + 3, y, panel - 3, rowH);
+      ctx.fillStyle = C.blue; ctx.font = `900 ${Math.min(26, rowH * 0.5)}px Verdana, sans-serif`; ctx.textAlign = 'left';
+      ctx.fillText(i + 1, px + 12, y + rowH / 2);
+      ctx.fillStyle = car.color; ctx.fillRect(px + 46, y + rowH / 2 - 7, 14, 14);
+      ctx.fillStyle = C.ink; ctx.font = `800 ${Math.min(17, rowH * 0.34)}px Verdana, sans-serif`;
+      ctx.fillText(car.name, px + 68, y + rowH / 2 - (p.fin ? 0 : 7), panel - 130);
+      ctx.font = `700 ${Math.min(12, rowH * 0.24)}px Verdana, sans-serif`; ctx.fillStyle = '#767676';
+      if (p.fin) { ctx.textAlign = 'right'; ctx.fillStyle = C.ink; ctx.font = '900 14px Verdana, sans-serif'; ctx.fillText(R.fmtTime(p.ft), cw - 12, y + rowH / 2); }
+      else {
+        ctx.fillText(`GIRO ${Math.min(race.laps, p.l + 1)}/${race.laps}`, px + 68, y + rowH / 2 + 10);
+        if (p.it) R.drawItem(ctx, p.it, cw - 26, y + rowH / 2, 1.2);
+      }
+    });
+  }
+  // ticker
+  ctx.textAlign = 'left';
+  ticker.forEach((m, i) => {
+    const age = (now - m.at) / 1000; if (age > 6) return;
+    ctx.globalAlpha = Math.max(0, Math.min(1, 6 - age));
+    const y = ch - 30 - i * 26;
+    ctx.font = '800 13px Verdana, sans-serif'; const w = ctx.measureText(m.text).width + 22;
+    ctx.fillStyle = '#fff'; ctx.fillRect(px + 12, y - 11, Math.min(w, panel - 24), 22);
+    ctx.fillStyle = m.color; ctx.fillRect(px + 12, y - 11, 5, 22);
+    ctx.fillStyle = C.ink; ctx.fillText(m.text, px + 22, y + 1, panel - 40);
+    ctx.globalAlpha = 1;
+  });
+  const area = cw - panel;
+  // countdown
+  const left = countdownEnd - now;
+  if (left > 0) {
+    ctx.fillStyle = 'rgba(245,245,245,.7)'; ctx.fillRect(0, 0, area, ch);
+    const txt = left > 3000 ? 'TELEFONI PIATTI…' : String(Math.ceil(left / 1000));
+    bigText(txt, area / 2, ch / 2, left > 3000 ? 54 : 180, C.blue);
+  } else if (now < goFlash) bigText('KÖR!', area / 2, ch / 2, 160, C.blue);
+  if (banner && now < banner.until) {
+    ctx.font = '900 28px Verdana, sans-serif'; const w = ctx.measureText(banner.text).width + 50;
+    ctx.fillStyle = C.yellow; ctx.fillRect(area / 2 - w / 2, 18, w, 54);
+    ctx.fillStyle = banner.color; ctx.textAlign = 'center'; ctx.fillText(banner.text, area / 2, 46);
+  }
+  if (now < flashUntil && Math.floor(now / 140) % 2) {      // SWEDISH FLAG flash
+    ctx.globalAlpha = 0.35; ctx.fillStyle = '#006AA7'; ctx.fillRect(0, 0, area, ch);
+    ctx.fillStyle = '#FECC00'; ctx.fillRect(area * 0.3, 0, area * 0.08, ch); ctx.fillRect(0, ch * 0.45, area, ch * 0.1);
+    ctx.globalAlpha = 1;
+  }
+  if (now < darkUntil) { ctx.fillStyle = 'rgba(0,0,0,.82)'; ctx.fillRect(0, 0, area, ch); bigText('BLACKOUT', area / 2, ch / 2, 60, '#333'); }
+}
+function bigText(t, x, y, size, color) {
+  ctx.font = `900 ${size}px Verdana, Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = size / 10; ctx.strokeStyle = '#fff'; ctx.lineJoin = 'round'; ctx.strokeText(t, x, y);
+  ctx.fillStyle = color; ctx.fillText(t, x, y);
+}
+
+/* ---------- results + podium ---------- */
+let podium = null;
+function showResults(d) {
+  const track = TR.byId[d.trackId];
+  $('rtrack').textContent = track ? track.name : '';
+  const box = $('rtable'); box.innerHTML = '';
+  d.results.forEach(r => {
+    const row = document.createElement('div'); row.className = 'rrow' + (r.rank === 1 ? ' first' : '');
+    const laps = r.lapTimes.map((l, i) => `G${i + 1} ${R.fmtTime(l)}`).join('  ·  ');
+    row.innerHTML = `<div class="rk">${r.rank}°</div><div class="nm"><i style="background:${r.color}"></i><span></span></div>
+      <div class="tm">${r.time == null ? 'NON ARRIVATO' : R.fmtTime(r.time)}</div><div class="laps">${laps || '—'}</div>`;
+    row.querySelector('.nm span').textContent = r.name;
+    box.append(row);
+  });
+  podium = { start: performance.now(), res: d.results, parts: new R.Particles(), confetti: false };
+  show('results');
+}
+const pc = $('podium'), pctx = pc.getContext('2d');
+const easeBounce = x => { const n = 7.5625, d = 2.75;
+  if (x < 1 / d) return n * x * x; if (x < 2 / d) return n * (x -= 1.5 / d) * x + 0.75;
+  if (x < 2.5 / d) return n * (x -= 2.25 / d) * x + 0.9375; return n * (x -= 2.625 / d) * x + 0.984375; };
+let plast = 0;
+function drawPodium(now) {
+  if (!podium) return;
+  const dt = Math.min(0.05, (now - (plast || now)) / 1000); plast = now;
+  const dpr = Math.min(2, window.devicePixelRatio || 1), cw = pc.clientWidth, ch = pc.clientHeight;
+  if (pc.width !== Math.round(cw * dpr)) { pc.width = Math.round(cw * dpr); pc.height = Math.round(ch * dpr); }
+  const x = pctx, C = R.C, t = (now - podium.start) / 1000;
+  x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  x.fillStyle = C.floor; x.fillRect(0, 0, cw, ch);
+  x.fillStyle = C.track; x.fillRect(0, ch * 0.86, cw, ch * 0.14);
+  x.fillStyle = C.yellow; for (let i = 0; i < cw; i += 40) x.fillRect(i, ch * 0.86, 24, 4);
+  x.fillStyle = C.blue; x.font = `900 ${Math.round(ch * 0.07)}px Verdana, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('IL PODIO IN ESPOSIZIONE', cw / 2, ch * 0.09, cw - 30);
+  const u = Math.min(cw / 3.4, ch / 3.2);         // shelf cube size
+  const slots = [{ rank: 2, cx: cw / 2 - u * 1.1, h: 2 }, { rank: 1, cx: cw / 2, h: 3 }, { rank: 3, cx: cw / 2 + u * 1.1, h: 1 }];
+  const base = ch * 0.86;
+  slots.forEach(sl => {
+    const r = podium.res.find(z => z.rank === sl.rank);
+    const sw = u, sh = u * 0.62 * sl.h, sx = sl.cx - sw / 2, sy = base - sh;
+    // KALLAX-style display shelf
+    x.fillStyle = C.birch; x.fillRect(sx, sy, sw, sh);
+    x.strokeStyle = '#A88B5E'; x.lineWidth = Math.max(3, u * 0.03);
+    x.strokeRect(sx, sy, sw, sh);
+    for (let k = 1; k < sl.h; k++) { x.beginPath(); x.moveTo(sx, sy + k * sh / sl.h); x.lineTo(sx + sw, sy + k * sh / sl.h); x.stroke(); }
+    x.beginPath(); x.moveTo(sl.cx, sy); x.lineTo(sl.cx, base); x.stroke();
+    // products in the cubes
+    for (let k = 0; k < sl.h; k++) {
+      const cy = sy + (k + 0.5) * sh / sl.h, cs = u * 0.13;
+      R.drawBoxShape(x, sl.cx - sw / 4, cy + cs * 0.4, cs);
+      x.save(); x.translate(sl.cx + sw / 4, cy); x.scale(u / 80, u / 80); R.drawIcon(x, ['lamp', 'plant', 'cup'][k % 3], 0, 0, 0.8); x.restore();
+    }
+    x.fillStyle = C.blue; x.font = `900 ${Math.round(u * 0.32)}px Verdana, sans-serif`; x.fillText(sl.rank, sl.cx - sw / 4, sy + sh / sl.h * 0.5 - u * 0.17);
+    if (!r) return;
+    // car "product" drops onto the shelf
+    const delay = { 3: 0.3, 2: 0.9, 1: 1.6 }[sl.rank], k = Math.max(0, Math.min(1, (t - delay) / 0.9));
+    if (t < delay) return;
+    const top = sy - u * 0.27, y = -u + (top + u) * easeBounce(k);
+    R.drawCar(x, sl.cx, y, -Math.PI / 2 + Math.sin(t * 2 + sl.rank) * 0.04 * (1 - k * 0.5), r.color, { scale: u / 48 });
+    if (sl.rank === 1 && k >= 1 && !podium.confetti) {
+      podium.confetti = true;
+      for (let i = 0; i < 6; i++) podium.parts.emit(cw / 2, sy - u * 0.3, { n: 30, colors: [C.blue, C.yellow, '#fff', C.red], speed: 420, life: 2.2, size: 9, square: true, gravity: 380 });
+    }
+    // yellow price tag
+    if (k >= 1) {
+      const tw = u * 0.95, th = u * 0.36, tx = sl.cx - tw / 2, ty = base + ch * 0.015;
+      x.fillStyle = C.yellow; x.fillRect(tx, ty, tw, th);
+      x.strokeStyle = C.ink; x.lineWidth = 2; x.strokeRect(tx, ty, tw, th);
+      x.fillStyle = C.ink; x.font = `900 ${Math.round(th * 0.36)}px Verdana, sans-serif`; x.fillText(r.name, sl.cx, ty + th * 0.33, tw - 10);
+      x.fillStyle = C.blue; x.font = `900 ${Math.round(th * 0.3)}px Verdana, sans-serif`;
+      x.fillText(r.time == null ? '—' : R.fmtTime(r.time), sl.cx, ty + th * 0.73);
+    }
+  });
+  podium.parts.update(dt); podium.parts.draw(x);
+}
+renderTracks();
+</script>
+</body>
+</html>
