@@ -10,7 +10,10 @@
   :root { --blue:#0058A3; --yellow:#FFDB00; --ink:#111; --floor:#F5F5F5; --grey:#767676; --red:#E4002B; }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html, body { height:100%; background:var(--floor); color:var(--ink); overflow:hidden; overscroll-behavior:none;
-    font-family:"Noto Sans", Verdana, "Helvetica Neue", Arial, sans-serif; -webkit-user-select:none; user-select:none; touch-action:none; }
+    font-family:"Noto Sans", Verdana, "Helvetica Neue", Arial, sans-serif; -webkit-user-select:none; user-select:none; touch-action:none;
+    -webkit-touch-callout:none; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+  #zoomfix { position:fixed; left:50%; top:8px; transform:translateX(-50%); z-index:60; display:none; background:var(--red); color:#fff; font-weight:900; padding:10px 14px; font-size:14px; }
+  #zoomfix.on { display:block; }
   button, input { font:inherit; }
   button { border:0; cursor:pointer; }
   .screen { position:fixed; inset:0; display:none; }
@@ -147,6 +150,7 @@
 </section>
 
 
+<button id="zoomfix">Lo schermo è zoomato: tocca qui</button>
 <script src="/socket.io/socket.io.js"></script>
 <script src="/three.min.js"></script>
 <script src="tracks.js"></script>
@@ -270,6 +274,30 @@ function steerValue() {
 }
 setInterval(() => { if (scr === 'wait' && tilt.on) $('tiltdot').style.left = (50 + steerValue() * 48) + '%'; }, 50);
 
+/* ---------- stop the browser from zooming / scrolling while you race ----------
+ * Two thumbs on the screen (steer + GAS) look like a "pinch" to iOS Safari, which ignores
+ * user-scalable=no: block every gesture, double-tap and multi-touch move on the race screen. */
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+document.addEventListener('touchstart', e => { if (scr === 'race' || e.touches.length > 1) e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', e => { if (scr === 'race' || e.touches.length > 1) e.preventDefault(); }, { passive: false });
+document.addEventListener('touchend', e => { if (scr === 'race') e.preventDefault(); }, { passive: false });
+document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+// if the page got zoomed anyway (or the phone left full screen), show a fix button
+function checkZoom() {
+  const vv = window.visualViewport, zoomed = vv && Math.abs(vv.scale - 1) > 0.02;
+  $('zoomfix').classList.toggle('on', scr === 'race' && !!zoomed);
+}
+if (window.visualViewport) { visualViewport.addEventListener('resize', checkZoom); visualViewport.addEventListener('scroll', checkZoom); }
+$('zoomfix').addEventListener('pointerdown', () => {
+  const m = document.querySelector('meta[name=viewport]'), c = m.content;
+  m.content = c + ',minimum-scale=1'; setTimeout(() => { m.content = c; checkZoom(); }, 300);     // forces the browser back to 100%
+  window.scrollTo(0, 0); goFullscreen();
+});
+// Android: swiping from the edge exits full screen → re-enter on the next GAS press
+function ensureFullscreen() {
+  if (document.fullscreenEnabled && !document.fullscreenElement) goFullscreen();
+}
+
 /* ---------- touch controls ---------- */
 // steering pad: slide your left thumb between ◀ and ▶ (analog)
 const pad = $('steer'), touches = new Map();
@@ -288,7 +316,7 @@ pad.addEventListener('pointermove', e => { if (touches.has(e.pointerId)) { touch
 for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(ev, e => { touches.delete(e.pointerId); padUpdate(); });
 // GAS: hold to accelerate, release to brake
 const gasBtn = $('gas');
-gasBtn.addEventListener('pointerdown', e => { e.preventDefault(); try { gasBtn.setPointerCapture(e.pointerId); } catch (_) {} tryTrick(); gasHeld = true; gasBtn.classList.add('on'); sendInput(); });
+gasBtn.addEventListener('pointerdown', e => { e.preventDefault(); try { gasBtn.setPointerCapture(e.pointerId); } catch (_) {} tryTrick(); ensureFullscreen(); gasHeld = true; gasBtn.classList.add('on'); sendInput(); });
 for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) gasBtn.addEventListener(ev, () => { gasHeld = false; gasBtn.classList.remove('on'); sendInput(); });
 $('pu').addEventListener('pointerdown', e => { e.preventDefault(); if (!tryTrick()) usePowerup(); });
 $('catch').addEventListener('pointerdown', e => { e.preventDefault(); tryCatch(); });

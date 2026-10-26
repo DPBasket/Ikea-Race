@@ -33,7 +33,7 @@ const COLORS = ['#E4002B', '#0058A3', '#FFDB00', '#00A651', '#FF7A00', '#8E44AD'
   '#FFFFFF', '#7CB342', '#1A237E', '#F48FB1', '#00897B', '#B71C1C', '#9E9E9E', '#FFB74D', '#4FC3F7', '#C0CA33'];
 const BOT_NAMES = ['BILLY', 'KALLAX', 'POÄNG', 'LACK', 'MALM', 'EKTORP', 'HEMNES', 'BRIMNES', 'IVAR', 'PAX', 'SÖDERHAMN', 'FRIHETEN', 'LINNMON', 'ALEX', 'BEKANT', 'STUVA', 'TROFAST', 'NORDLI', 'KLIPPAN', 'MARKUS'];
 // identical for every car – only the color changes
-const CAR = { accel: 340, brake: 440, maxSpeed: 310, turn: 2.8, r: 14 };
+const CAR = { accel: 300, brake: 440, maxSpeed: 280, turn: 2.8, r: 14 };
 
 /* =====================================================================
  * QUIZ INTEGRATION HOOKS – replace / override from the quiz app:
